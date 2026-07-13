@@ -129,4 +129,4 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`M0 — Scaffold.` Done when `npm run dev` shows a grey plane viewed from a fixed 45° yaw / 38° pitch perspective camera, running at a locked 60fps fixed timestep, with F1 toggling a stats overlay.
+`M0.5 — Deterministic visual regression harness.` Done when `npm run shot -- --script=idle --frames=0,60,120,240` writes PNGs driven by `window.__stillmote.step()` (no rAF, no wall clock), `npm run shot:check` passes against blessed goldens in `shots/golden/`, and typecheck + test + lint + build are green.

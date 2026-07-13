@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TUNING } from './config/tuning';
 import { Debug } from './core/Debug';
 import { Game } from './core/Game';
+import { installHarness } from './core/Harness';
 import { Input } from './core/Input';
 import { Time } from './core/Time';
 import { CameraRig } from './render/CameraRig';
@@ -54,4 +55,12 @@ const game = new Game({
   scene,
   target,
 });
-game.start();
+
+// Harness mode (dev builds only): expose window.__stillmote and do NOT start
+// the real-time loop — the harness drives the sim by exact fixed steps.
+const harnessMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has('harness');
+if (harnessMode) {
+  installHarness(game);
+} else {
+  game.start();
+}

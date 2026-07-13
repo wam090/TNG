@@ -698,12 +698,16 @@ export const TUNING = {
 | **M0** | Scaffold: Vite + TS + Three, fixed-timestep loop, resize, grey box floor, isometric camera, debug overlay | `npm run dev` → grey plane at 38°, locked 60fps, F1 toggles stats |
 | **M0.5** | Playwright screenshot harness (§8.4) | `npm run shot` writes PNGs. Claude Code can view them. |
 | **M1** | Level pipeline: `level01.json` → LevelBuilder → meshes + BVH collider. F2 = collider wireframe. Click-to-copy-coords debug tool. | Edit the JSON → map changes on hot reload, no code touched |
-| **M2** | **Character + controller.** Chassis, capsule vs BVH, camera-relative movement, jump + coyote + buffer + variable height, ground snap, slopes, squash/stretch, mass field | Someone else plays it and *doesn't comment on the movement*. That's the bar. Silence = success. |
+| **M2** | **Character + controller.** Chassis, capsule vs BVH, camera-relative movement, jump + coyote + buffer + variable height, ground snap, slopes, squash/stretch, mass field. **Plus the two M2 requirements below this table (render interpolation; ground shadow + landing indicator).** | Someone else plays it and *doesn't comment on the movement*. That's the bar. Silence = success. |
 | **M3** | **Element architecture.** Registry, `ElementModule`, loadout array (cap 1), `resolveStats` (unit tested), socket/attachment system, token pickup + HUD slot. **Wind is a stub: tint + stat mods only, no abilities.** | Touch the Core → turn grey, jump higher. `MAX_ACTIVE` exists in config. `resolveStats` has passing tests. |
 | **M4** | **Wind abilities + all 9 props.** Gust, Glide. Props react to `PushEvent`, never to `'wind'`. Signal/gate wiring. Checkpoints. | Level 1's critical path is completable start to finish |
 | **M5** | **VFX + game feel.** Streaks, motes, rotor, trail, the pickup moment, hit-stop, camera punch, land particles | The pickup moment makes you smile. Then, and only then, move on. |
 | **M6** | **Shell.** Title, pause, level complete, save/load, level select, audio, settings | A stranger plays from a URL, start to finish, without you in the room |
 | **M7** | **Polish + ship.** Bloom, fog, loading screen. **Deploy to itch.io.** | It's public. Real people can click it. |
+
+**M2 REQUIREMENT — render interpolation** *(added at M0.5)*. Game exposes `alpha = accumulator / fixedDt`. Player renders at `lerp(prevTransform, currTransform, alpha)`. Without this a 60Hz sim rendered at any other rate judders, and I will mistake judder for bad movement tuning and waste a session.
+
+**M2 REQUIREMENT — ground shadow + landing indicator** *(added at M0.5)*. A directional shadow for grounding, PLUS an always-visible blob raycast straight down from the player. In an angled 3D view height is unreadable without it, and I cannot judge whether jumping feels good if I cannot tell where I am going to land.
 
 Then — and only then — **Fire**.
 

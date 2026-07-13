@@ -11,6 +11,11 @@ export interface InputSnapshot {
   actionReleased: boolean;
 }
 
+/** Anything the sim can poll for input — real devices (Input) or a script (ScriptedInput). */
+export interface InputSource {
+  poll(): InputSnapshot;
+}
+
 // Bindings are mappings, not tunables — they live here, named, not in tuning.ts.
 const KEYS_UP = ['KeyW', 'ArrowUp'] as const;
 const KEYS_DOWN = ['KeyS', 'ArrowDown'] as const;
@@ -34,7 +39,7 @@ const GAME_KEYS: ReadonlySet<string> = new Set([
  * snapshot each fixed step, so pressed/released edges land exactly on substep
  * boundaries and are consumed once.
  */
-export class Input {
+export class Input implements InputSource {
   private readonly down = new Set<string>();
   private prevJumpHeld = false;
   private prevActionHeld = false;

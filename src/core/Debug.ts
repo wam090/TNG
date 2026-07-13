@@ -42,10 +42,19 @@ export class Debug {
     window.addEventListener('keydown', (e) => {
       if (e.code === 'F1') {
         e.preventDefault(); // browsers open help on F1
-        this.visible = !this.visible;
-        this.panel.style.display = this.visible ? 'block' : 'none';
+        this.setVisible(!this.visible);
       }
     });
+
+    // ?debug=1 forces the overlay on from boot (screenshot harness --debug).
+    if (new URLSearchParams(window.location.search).has('debug')) {
+      this.setVisible(true);
+    }
+  }
+
+  private setVisible(visible: boolean): void {
+    this.visible = visible;
+    this.panel.style.display = visible ? 'block' : 'none';
   }
 
   /** Called once per render frame by Game. */

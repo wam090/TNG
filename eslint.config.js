@@ -76,9 +76,17 @@ export default tseslint.config(
     },
   },
 
-  // The config file itself is plain JS — no type info available for it.
+  // Plain JS (this config, node tooling) — no type info available for it.
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
+  },
+
+  // Node tooling scripts mix node globals with in-page (browser) evaluate
+  // callbacks; no-undef would need both global sets. TS owns src/ safety —
+  // tools are plain scripts, so no-undef is off there and nowhere else.
+  {
+    files: ['tools/**/*.mjs'],
+    rules: { 'no-undef': 'off' },
   },
 );

@@ -8,7 +8,10 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "shot": "node tools/shot.mjs",
+    "shot:check": "node tools/shot-check.mjs",
+    "shot:bless": "node tools/shot-bless.mjs"
   },
   "dependencies": {
     "three": "^0.185.1"
@@ -17,6 +20,7 @@
     "@eslint/js": "^10.0.1",
     "@types/three": "^0.185.1",
     "eslint": "^10.7.0",
+    "playwright": "^1.61.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.63.0",
     "vite": "^8.1.4",

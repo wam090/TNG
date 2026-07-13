@@ -101,6 +101,10 @@ export const TUNING = {
     gamepadDeadzone: 0.15,
   },
 
+  rng: {
+    defaultSeed: 1, // [M0.5+] harness runs reseed explicitly; gameplay consumers arrive at M5
+  },
+
   debug: {
     fpsWindow: 0.5, // seconds of frames averaged into the overlay fps figure
   },
