@@ -17,6 +17,10 @@ export class Renderer {
     return window.innerWidth / window.innerHeight;
   }
 
+  get domElement(): HTMLCanvasElement {
+    return this.gl.domElement;
+  }
+
   /** Keep the drawing buffer and the camera projection in sync with the window. */
   attachCamera(camera: THREE.PerspectiveCamera): void {
     window.addEventListener('resize', () => {

@@ -10,7 +10,7 @@
 
 **STILLMOTE** — a 3D, level-based, isometric-perspective puzzle-platformer.
 
-A blank off-white creature collects stillmotel Cores (Wind, Fire, Water, Earth). Each Core rewrites its movement physics, bolts new geometry onto its body, and grants one new verb. Every power has a matching liability. The world is inert until you bring an element to it.
+A blank off-white creature collects elemental Cores (Wind, Fire, Water, Earth). Each Core rewrites its movement physics, bolts new geometry onto its body, and grants one new verb. Every power has a matching liability. The world is inert until you bring an element to it.
 
 **v1 = Level 1 + Wind only.** Nothing else.
 
@@ -129,4 +129,4 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`M0.5 — Deterministic visual regression harness.` Done when `npm run shot -- --script=idle --frames=0,60,120,240` writes PNGs driven by `window.__stillmote.step()` (no rAF, no wall clock), `npm run shot:check` passes against blessed goldens in `shots/golden/`, and typecheck + test + lint + build are green.
+`M1 — Level pipeline.` Done when editing `src/levels/level01.json` hot-rebuilds the level in place with no page refresh (malformed JSON → a clear block-naming LevelParseError, previous level kept), F2 toggles the collider wireframe, clicking the scene copies `[x, y, z]` to clipboard + console, the level01 golden is blessed, and typecheck + test + lint + build are green.

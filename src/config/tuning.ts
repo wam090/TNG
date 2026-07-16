@@ -110,13 +110,6 @@ export const TUNING = {
   },
 
   scaffold: {
-    sky: '#DCE7EE',
-    groundSize: [30, 1, 24],
-    groundColor: '#9AA0A4',
-    cubeSize: 1,
-    cubeColor: '#D0342C',
-    sunDir: [-0.4, -1.0, -0.3],
-    sunIntensity: 1.0,
-    ambient: 0.55,
+    cubeSize: 1, // camera-target stand-in; retired at M2 when the player exists
   },
 } as const;

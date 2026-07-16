@@ -15,3 +15,11 @@
 - M0.5: goldens are overlay-OFF renders at fixed 1280×720@1 (text rasterisation is the brittle part; `--debug` overlay shots are for eyeballing only); `shots/*.png` gitignored, `shots/golden/` committed.
 - M0.5: index.html favicon is an empty data URI so the harness's fail-on-any-console-error policy stays strict (no favicon 404 noise to whitelist).
 - M0.5: STANDING RULE — after any visual change, run the harness and VIEW the PNGs before declaring done.
+- M1: dependency added — `three-mesh-bvh@0.9.11` (runtime): BVH over the merged static level geometry; powers raycasts now (ground probe, click-to-copy) and the M2 capsule sweep next. Hand-rolling a BVH is weeks of work for a worse result; this is the one collision dependency SPEC §8.1/§8.3 sanctions.
+- M1: toolchain verdict — KEEP Vite 8. The Mac install failure's root cause was npm < 10.9's optional-deps bug (npm/cli#4828), not vite; vite 7 also ships native binaries (esbuild) and exits support sooner. Mitigation instead of downgrade: package.json "engines" (node ≥ 22.12, npm ≥ 10.9) + .npmrc engine-strict=true, so an old toolchain fails at install with a clear EBADENGINE instead of a cryptic rolldown crash at dev time.
+- M1: ramp convention — the wedge's bounding box centres on `pos` exactly like a box; the slope rises along local +Z (bottom edge at -Z, full height at +Z); `rotY` (degrees, CCW around Y) orients it. Proven by collider unit tests (slope height at z=0 is exactly h/2).
+- M1: F2 draws the merged collision geometry as an X-ray wireframe (depthTest off), not the BVH boxes — levels are authored against surfaces, not the tree.
+- M1: the level validator ignores unknown top-level keys (tokens/props/shards/goal) so M4 content can sit in the JSON before its systems exist; env gains optional `sunIntensity` (default 1.0) so light intensity isn't a hardcoded number.
+- M1: scaffold tuning slimmed to `cubeSize`; the camera-target cube now uses palette "accent" and is placed by `collider.groundProbe` under the level spawn — the probe is exercised on every boot.
+- M1: all goldens re-blessed (the scene is now level01; the M0 scaffold scene is retired); the level01 golden is framed to include all five blocks for maximum regression coverage.
+- M1: fixed rename artifact in CLAUDE.md — "stillmotel Cores" → "elemental Cores" (the ELEMENTA→STILLMOTE sed over-matched "elemental").

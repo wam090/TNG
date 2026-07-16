@@ -24,6 +24,7 @@ export class Debug {
   private readonly panel: HTMLDivElement;
   private readonly stats: HTMLDivElement;
   private readonly warn: HTMLDivElement;
+  private readonly toggles = new Map<string, { on: boolean; apply: (on: boolean) => void }>();
   private visible = false;
   private fpsFrames = 0;
   private fpsTime = 0;
@@ -43,6 +44,13 @@ export class Debug {
       if (e.code === 'F1') {
         e.preventDefault(); // browsers open help on F1
         this.setVisible(!this.visible);
+        return;
+      }
+      const toggle = this.toggles.get(e.code);
+      if (toggle) {
+        e.preventDefault();
+        toggle.on = !toggle.on;
+        toggle.apply(toggle.on);
       }
     });
 
@@ -55,6 +63,21 @@ export class Debug {
   private setVisible(visible: boolean): void {
     this.visible = visible;
     this.panel.style.display = visible ? 'block' : 'none';
+  }
+
+  /**
+   * Register a keyed debug toggle (e.g. 'F2' → collider wireframe). The
+   * current state survives re-registration, so hot-reloaded systems keep
+   * their toggle state; `apply` is invoked immediately with that state.
+   */
+  registerToggle(code: string, apply: (on: boolean) => void): void {
+    const on = this.toggles.get(code)?.on ?? false;
+    this.toggles.set(code, { on, apply });
+    apply(on);
+  }
+
+  isToggleOn(code: string): boolean {
+    return this.toggles.get(code)?.on ?? false;
   }
 
   /** Called once per render frame by Game. */
