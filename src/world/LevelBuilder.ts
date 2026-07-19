@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { TUNING } from '../config/tuning';
 import { DEG2RAD } from '../core/Math';
 import type { Materials } from '../render/Materials';
 import { Collider } from './Collider';
@@ -64,6 +65,8 @@ export class LevelBuilder {
       const mesh = new THREE.Mesh(geometry, this.materials.get(block.mat));
       mesh.position.set(...block.pos);
       mesh.rotation.y = block.rotY * DEG2RAD;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       mesh.updateMatrix();
       group.add(mesh);
 
@@ -72,8 +75,12 @@ export class LevelBuilder {
       part.setAttribute('position', geometry.getAttribute('position').clone());
       if (geometry.index) part.setIndex(geometry.index.clone());
       part.applyMatrix4(mesh.matrix);
-      collisionParts.push(part.toNonIndexed());
-      part.dispose();
+      if (part.index) {
+        collisionParts.push(part.toNonIndexed());
+        part.dispose();
+      } else {
+        collisionParts.push(part);
+      }
     }
 
     const merged = mergeGeometries(collisionParts, false);
@@ -106,7 +113,29 @@ export class LevelBuilder {
     // Lights live in the group so a rebuild replaces them with the level.
     const sun = new THREE.DirectionalLight(LIGHT_COLOR, env.sunIntensity);
     sun.position.set(-env.sunDir[0], -env.sunDir[1], -env.sunDir[2]);
+    this.fitSunShadow(sun, group);
     group.add(sun);
+    group.add(sun.target);
     group.add(new THREE.AmbientLight(LIGHT_COLOR, env.ambient));
+  }
+
+  /** Shadow camera auto-fits the level bounds — no hand-tuned frustum numbers. */
+  private fitSunShadow(sun: THREE.DirectionalLight, group: THREE.Group): void {
+    const bounds = new THREE.Box3().setFromObject(group);
+    const centre = bounds.getCenter(new THREE.Vector3());
+    const radius = bounds.getSize(new THREE.Vector3()).length() / 2;
+
+    sun.castShadow = true;
+    sun.shadow.mapSize.setScalar(TUNING.render.shadow.mapSize);
+    sun.shadow.bias = TUNING.render.shadow.bias;
+    sun.position.normalize().multiplyScalar(radius * 2).add(centre);
+    sun.target.position.copy(centre);
+    const cam = sun.shadow.camera;
+    cam.left = -radius;
+    cam.right = radius;
+    cam.top = radius;
+    cam.bottom = -radius;
+    cam.near = radius * 0.1;
+    cam.far = radius * 4;
   }
 }

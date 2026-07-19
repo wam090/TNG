@@ -4,10 +4,10 @@ import type { Debug } from './Debug';
 import type { InputSource } from './Input';
 import { Rng } from './Rng';
 import type { Time } from './Time';
+import type { Player } from '../player/Player';
 import type { CameraRig } from '../render/CameraRig';
 import type { Renderer } from '../render/Renderer';
-
-export type GameState = 'running'; // grows into the real state machine at M2
+import type { FadeOverlay } from '../ui/FadeOverlay';
 
 export interface GameParts {
   time: Time;
@@ -16,28 +16,32 @@ export interface GameParts {
   renderer: Renderer;
   cameraRig: CameraRig;
   scene: THREE.Scene;
-  target: THREE.Object3D;
+  player: Player;
+  fade?: FadeOverlay;
 }
 
 /** JSON-serialisable snapshot for the test harness (window.__stillmote.state()). */
 export interface GameSnapshot {
   step: number;
-  state: GameState;
-  target: [number, number, number];
+  state: string;
+  player: [number, number, number];
+  velocity: [number, number, number];
+  grounded: boolean;
   substepCapHits: number;
 }
 
 /**
  * Fixed-timestep loop. Simulation advances in fixed dt substeps driven by an
- * accumulator; rendering happens exactly once per animation frame. The wall
- * clock is read exactly once per frame (via Time) at the loop boundary —
- * update(dt) never sees it.
+ * accumulator; rendering happens exactly once per animation frame, with the
+ * player drawn at lerp(prev, curr, alpha) where alpha = accumulator/fixedDt —
+ * a 60Hz sim stays smooth at any render rate. The wall clock is read exactly
+ * once per frame (via Time) at the loop boundary; update(dt) never sees it.
  *
  * Two drive modes, mutually exclusive:
  *  - start(): real-time rAF loop for play.
- *  - stepManual(n): harness mode. Advances exactly n fixed steps and renders.
- *    Never touches Time or the accumulator, so wall-clock effects (including
- *    substep-cap drains) are structurally impossible in a harness run.
+ *  - stepManual(n): harness mode. Advances exactly n fixed steps and renders
+ *    at alpha=1 (exact sim state). Never touches Time or the accumulator, so
+ *    wall-clock effects (incl. substep-cap drains) are impossible here.
  */
 export class Game {
   rng = new Rng(TUNING.rng.defaultSeed);
@@ -46,7 +50,6 @@ export class Game {
   private stepCount = 0;
   private substepCapHits = 0;
   private lastDroppedTime = 0;
-  private readonly state: GameState = 'running';
 
   constructor(private readonly parts: GameParts) {
     this.inputSource = parts.input;
@@ -60,35 +63,19 @@ export class Game {
     requestAnimationFrame(loop);
   }
 
-  /** Harness: advance exactly n fixed sim steps (camera stepped in lockstep), then render once. */
+  /** Harness: advance exactly n fixed sim steps (camera in lockstep), then render once. */
   stepManual(n: number): void {
-    const { debug, renderer, cameraRig, scene, target } = this.parts;
+    const { debug, renderer, cameraRig, scene, player } = this.parts;
     for (let i = 0; i < n; i += 1) {
       this.update(TUNING.loop.fixedDt);
-      cameraRig.update(target, TUNING.loop.fixedDt);
-      debug.frame({
-        frameDt: TUNING.loop.fixedDt,
-        steps: 1,
-        accumulator: 0,
-        substepCapHits: this.substepCapHits,
-        lastDroppedTime: this.lastDroppedTime,
-        drainedThisFrame: false,
-        targetPosition: target.position,
-        state: this.state,
-      });
+      player.syncVisual(1);
+      cameraRig.update(player.renderPosition, player.velocity, TUNING.loop.fixedDt);
+      debug.frame(this.debugStats(TUNING.loop.fixedDt, 1, false));
     }
     if (n === 0) {
-      cameraRig.update(target, 0); // first call snaps; render frame 0 from the rig, not default pose
-      debug.frame({
-        frameDt: 0,
-        steps: 0,
-        accumulator: 0,
-        substepCapHits: this.substepCapHits,
-        lastDroppedTime: this.lastDroppedTime,
-        drainedThisFrame: false,
-        targetPosition: target.position,
-        state: this.state,
-      });
+      player.syncVisual(1);
+      cameraRig.update(player.renderPosition, player.velocity, 0);
+      debug.frame(this.debugStats(0, 0, false));
     }
     renderer.render(scene, cameraRig.camera);
   }
@@ -104,17 +91,19 @@ export class Game {
   }
 
   snapshot(): GameSnapshot {
-    const p = this.parts.target.position;
+    const p = this.parts.player;
     return {
       step: this.stepCount,
-      state: this.state,
-      target: [p.x, p.y, p.z],
+      state: p.state,
+      player: [p.position.x, p.position.y, p.position.z],
+      velocity: [p.velocity.x, p.velocity.y, p.velocity.z],
+      grounded: p.grounded,
       substepCapHits: this.substepCapHits,
     };
   }
 
   private frame(): void {
-    const { time, debug, renderer, cameraRig, scene, target } = this.parts;
+    const { time, debug, renderer, cameraRig, scene, player, fade } = this.parts;
     const frameDt = time.frameDelta();
     this.accumulator += frameDt;
 
@@ -123,7 +112,6 @@ export class Game {
     while (this.accumulator >= TUNING.loop.fixedDt) {
       if (steps >= TUNING.loop.maxSubsteps) {
         // Spiral-of-death guard: drop the backlog instead of carrying it.
-        // The sim degrades to slow motion; the overlay makes the drop visible.
         this.lastDroppedTime = this.accumulator;
         this.accumulator = 0;
         this.substepCapHits += 1;
@@ -135,27 +123,35 @@ export class Game {
       steps += 1;
     }
 
-    // Render-side smoothing uses the real frame delta — frame-rate independent
-    // via damp(), and the camera stays fluid even on 0-substep frames.
-    cameraRig.update(target, frameDt);
+    // Render interpolation (SPEC M2 requirement): the player is drawn between
+    // the previous and current sim transforms by the accumulator fraction.
+    const alpha = this.accumulator / TUNING.loop.fixedDt;
+    player.syncVisual(alpha);
+    cameraRig.update(player.renderPosition, player.velocity, frameDt);
+    fade?.set(player.fadeOpacity);
     renderer.render(scene, cameraRig.camera);
+    debug.frame(this.debugStats(frameDt, steps, drained));
+  }
 
-    debug.frame({
+  private update(dt: number): void {
+    const snap = this.inputSource.poll();
+    this.parts.player.update(dt, snap);
+    this.stepCount += 1;
+  }
+
+  private debugStats(frameDt: number, steps: number, drained: boolean) {
+    const p = this.parts.player;
+    return {
       frameDt,
       steps,
       accumulator: this.accumulator,
       substepCapHits: this.substepCapHits,
       lastDroppedTime: this.lastDroppedTime,
       drainedThisFrame: drained,
-      targetPosition: target.position,
-      state: this.state,
-    });
-  }
-
-  private update(_dt: number): void {
-    // M0: nothing simulates yet. Polling still runs each substep so edge
-    // detection lands on fixed-step boundaries from day one.
-    this.inputSource.poll();
-    this.stepCount += 1;
+      position: p.position,
+      velocity: p.velocity,
+      grounded: p.grounded,
+      state: p.state,
+    };
   }
 }

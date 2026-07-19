@@ -44,6 +44,16 @@ export const TUNING = {
       maxFallSpeed: 28,
       airControl: 0.65,
     },
+    // [M2+] procedural animation feel (SPEC §3.4 values) + landing indicator
+    anim: {
+      idleBobAmp: 0.03,
+      idleBobPeriod: 2.2,
+      leanMaxDeg: 12,
+      leanStiffness: 10,
+      runThreshold: 0.5, // horizontal speed above which Idle becomes Run
+      landDuration: 0.12, // how long the Land state holds before Idle/Run
+    },
+    landingBlob: { radius: 0.3, opacity: 0.35 },
   },
 
   elements: {
@@ -95,6 +105,7 @@ export const TUNING = {
 
   render: {
     maxPixelRatio: 2,
+    shadow: { mapSize: 2048, bias: -0.0005 }, // [M2+] directional shadow for grounding
   },
 
   input: {
@@ -109,7 +120,4 @@ export const TUNING = {
     fpsWindow: 0.5, // seconds of frames averaged into the overlay fps figure
   },
 
-  scaffold: {
-    cubeSize: 1, // camera-target stand-in; retired at M2 when the player exists
-  },
 } as const;

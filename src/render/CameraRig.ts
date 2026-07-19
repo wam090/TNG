@@ -4,7 +4,9 @@ import { DEG2RAD, damp } from '../core/Math';
 
 /**
  * Fixed-angle perspective rig: yaw/pitch/distance never change; only the
- * focus point moves, chasing the target with frame-rate-independent damping.
+ * focus point moves, chasing the target with frame-rate-independent damping
+ * plus a horizontal look-ahead in the direction of travel (SPEC §4.4).
+ * Look-ahead is horizontal-only: vertical look-ahead dives on falls.
  */
 export class CameraRig {
   readonly camera: THREE.PerspectiveCamera;
@@ -27,11 +29,15 @@ export class CameraRig {
     );
   }
 
-  update(target: THREE.Object3D, dt: number): void {
-    this.desired.copy(target.position);
-    this.desired.y += TUNING.camera.heightOffset;
+  update(focusTarget: THREE.Vector3, velocity: THREE.Vector3, dt: number): void {
+    const C = TUNING.camera;
+    this.desired.copy(focusTarget);
+    this.desired.y += C.heightOffset;
+    this.desired.x += velocity.x * C.lookAheadFactor;
+    this.desired.z += velocity.z * C.lookAheadFactor;
+
     if (this.initialised) {
-      this.focus.lerp(this.desired, damp(TUNING.camera.followStiffness, dt));
+      this.focus.lerp(this.desired, damp(C.followStiffness, dt));
     } else {
       this.focus.copy(this.desired); // first frame: snap, don't sweep in from origin
       this.initialised = true;

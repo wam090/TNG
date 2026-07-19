@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import levelJson from './levels/level01.json';
-import { TUNING } from './config/tuning';
 import { Debug } from './core/Debug';
 import { Game } from './core/Game';
 import { installHarness } from './core/Harness';
 import { Input } from './core/Input';
 import { Time } from './core/Time';
+import { Player } from './player/Player';
 import { CameraRig } from './render/CameraRig';
 import { Materials } from './render/Materials';
 import { Renderer } from './render/Renderer';
+import { FadeOverlay } from './ui/FadeOverlay';
 import { installCoordPicker } from './world/CoordPicker';
 import { Level } from './world/Level';
 import { LevelBuilder } from './world/LevelBuilder';
@@ -22,21 +23,15 @@ const materials = new Materials();
 const level = new Level(scene, new LevelBuilder(materials), debug);
 level.load(levelJson);
 
-// Camera-target stand-in until the M2 player: an accent cube resting on the
-// ground directly beneath the level's spawn point (placed via ground probe).
-const target = new THREE.Mesh(
-  new THREE.BoxGeometry(TUNING.scaffold.cubeSize, TUNING.scaffold.cubeSize, TUNING.scaffold.cubeSize),
-  materials.get('accent'),
-);
-scene.add(target);
-function placeTargetAtSpawn(): void {
+const player = new Player(scene, () => level.collider);
+function spawnPlayer(): void {
   const spawn = level.spawn;
   if (!spawn) return;
   const hit = level.collider?.groundProbe(spawn);
-  const y = hit ? hit.point.y + TUNING.scaffold.cubeSize / 2 : spawn.y;
-  target.position.set(spawn.x, y, spawn.z);
+  const feet = hit ? new THREE.Vector3(spawn.x, hit.point.y, spawn.z) : spawn.clone();
+  player.spawnAt(feet);
 }
-placeTargetAtSpawn();
+spawnPlayer();
 
 const renderer = new Renderer(app);
 const cameraRig = new CameraRig(renderer.aspect);
@@ -49,7 +44,8 @@ const game = new Game({
   renderer,
   cameraRig,
   scene,
-  target,
+  player,
+  fade: new FadeOverlay(),
 });
 
 if (import.meta.env.DEV) {
@@ -61,7 +57,14 @@ if (import.meta.env.DEV) {
 if (import.meta.hot) {
   import.meta.hot.accept('./levels/level01.json', (mod) => {
     const raw: unknown = mod?.default;
-    if (raw !== undefined && level.tryReload(raw)) placeTargetAtSpawn();
+    if (raw !== undefined && level.tryReload(raw)) {
+      // Keep the player where they stand; only the respawn point follows the JSON.
+      const spawn = level.spawn;
+      if (spawn) {
+        const hit = level.collider?.groundProbe(spawn);
+        player.setSpawn(hit ? new THREE.Vector3(spawn.x, hit.point.y, spawn.z) : spawn);
+      }
+    }
   });
 }
 

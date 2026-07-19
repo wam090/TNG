@@ -129,4 +129,4 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`M1 — Level pipeline.` Done when editing `src/levels/level01.json` hot-rebuilds the level in place with no page refresh (malformed JSON → a clear block-naming LevelParseError, previous level kept), F2 toggles the collider wireframe, clicking the scene copies `[x, y, z]` to clipboard + console, the level01 golden is blessed, and typecheck + test + lint + build are green.
+`M2 — Character + controller (DRAFT — feel pass pending).` Machine part done: four gates green, tunnelling arbiter test green, render interpolation + shadow/blob present, run_east + jump_arc goldens blessed after viewing. Real part is the owner's: play it, send five bullets on what feels wrong. Do not tune unprompted.

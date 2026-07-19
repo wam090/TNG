@@ -1,0 +1,5 @@
+{
+  "name": "run_east",
+  "steps": 240,
+  "segments": [{ "from": 0, "until": 240, "hold": ["right"] }]
+}

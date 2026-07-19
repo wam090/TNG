@@ -8,7 +8,9 @@ export interface DebugFrameStats {
   substepCapHits: number;
   lastDroppedTime: number;
   drainedThisFrame: boolean;
-  targetPosition: THREE.Vector3;
+  position: THREE.Vector3;
+  velocity: THREE.Vector3;
+  grounded: boolean;
   state: string;
 }
 
@@ -93,13 +95,17 @@ export class Debug {
     if (!this.visible) return;
 
     const ms = (v: number): string => (v * 1000).toFixed(2);
-    const p = s.targetPosition;
+    const p = s.position;
+    const v = s.velocity;
+    const hSpeed = Math.hypot(v.x, v.z);
     this.stats.textContent =
       `fps          ${this.fps.toFixed(1)}\n` +
       `frame dt     ${ms(s.frameDt)} ms\n` +
       `sim steps    ${s.steps.toFixed(0)}\n` +
       `accumulator  ${ms(s.accumulator)} ms\n` +
-      `target       ${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}\n` +
+      `pos          ${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}\n` +
+      `vel          h ${hSpeed.toFixed(2)}  y ${v.y.toFixed(2)}\n` +
+      `grounded     ${s.grounded ? 'yes' : 'no'}\n` +
       `state        ${s.state}`;
 
     this.warn.textContent =

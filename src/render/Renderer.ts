@@ -8,6 +8,8 @@ export class Renderer {
     this.gl = new THREE.WebGLRenderer({ antialias: true });
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
     this.gl.toneMapping = THREE.ACESFilmicToneMapping;
+    this.gl.shadowMap.enabled = true;
+    this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
     this.gl.setPixelRatio(Math.min(window.devicePixelRatio, TUNING.render.maxPixelRatio));
     this.gl.setSize(window.innerWidth, window.innerHeight);
     parent.appendChild(this.gl.domElement);

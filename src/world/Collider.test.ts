@@ -47,10 +47,15 @@ describe('Collider', () => {
     expect(collider.groundProbe(new THREE.Vector3(0, 5, 0), 2)).toBeNull();
   });
 
-  it('capsuleSweep is a loud M2 stub', () => {
+  it('capsuleSweep deposits a downward sweep on the floor, not through it', () => {
     const { collider } = build();
-    expect(() =>
-      collider.capsuleSweep(new THREE.Vector3(), new THREE.Vector3(), 0.35, 1.3),
-    ).toThrow(/M2/);
+    const result = collider.capsuleSweep(
+      new THREE.Vector3(0, 3, 0),
+      new THREE.Vector3(0, -2, 0),
+      0.35,
+      1.3,
+    );
+    expect(result.collided).toBe(true);
+    expect(result.position.y).toBeGreaterThanOrEqual(-0.01);
   });
 });

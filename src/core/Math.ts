@@ -12,3 +12,13 @@ export function damp(stiffness: number, dt: number): number {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+
+const TAU = Math.PI * 2;
+
+/** Lerp between angles (radians) along the shortest arc. */
+export function lerpAngle(a: number, b: number, t: number): number {
+  let diff = (b - a) % TAU;
+  if (diff > Math.PI) diff -= TAU;
+  if (diff < -Math.PI) diff += TAU;
+  return a + diff * t;
+}
