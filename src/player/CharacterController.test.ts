@@ -18,6 +18,7 @@ const json = {
     { type: 'ramp', pos: [-20, 2, 0], size: [4, 4, 4], mat: 'stone' }, // 45° < 48°
     { type: 'ramp', pos: [-30, 4, 0], size: [4, 8, 4], mat: 'stone' }, // 63.4° > 48°
     { type: 'box', pos: [40, 2, 0], size: [4, 4, 4], mat: 'stone' }, // ledge top at 4
+    { type: 'ramp', pos: [-50, 4, 0], size: [8, 8, 8], mat: 'stone' }, // big 45° face for sustained climbs
   ],
 };
 
@@ -70,6 +71,70 @@ describe('grounding', () => {
     });
     expect(groundedOnFace).toBe(false);
     expect(ctrl.position.z).toBeLessThan(startZ - 0.2); // slid downhill (-z)
+  });
+});
+
+describe('slope jump — THE ARBITER for the VP ramp-jump bug', () => {
+  // Big wedge at [-50,4,0] size 8: face rises +z, surface y = z + 8 for z ∈ [-4, 4].
+  const surfaceY = (z: number): number => z + 8 - 4; // z+4
+
+  it('grounded stays CONTINUOUSLY true while climbing a walkable slope (the continuity assertion)', () => {
+    const ctrl = makeController([-50, 4.1, 0]);
+    run(ctrl, 30); // settle mid-face
+    expect(ctrl.grounded).toBe(true);
+    const startZ = ctrl.position.z;
+    run(ctrl, 30, () => ({ x: 0, z: 1, jumpPressed: false, jumpHeld: false }), () => {
+      expect(ctrl.grounded).toBe(true); // every single step — no flicker, no lottery
+    });
+    // Actually climbed. (45° climbs are slow by design — grounding zeroes the
+    // slide's up-slope vy each step; the level's real 18° ramp climbs at
+    // near-full speed. Flagged to the VP as a feel observation.)
+    expect(ctrl.position.z).toBeGreaterThan(startZ + 0.15);
+  });
+
+  it('jump fires at full impulse mid-climb (up-slope) and the capsule leaves the face', () => {
+    const ctrl = makeController([-50, 4.1, 0]);
+    run(ctrl, 30);
+    run(ctrl, 20, () => ({ x: 0, z: 1, jumpPressed: false, jumpHeld: false }));
+    ctrl.update(DT, { x: 0, z: 1, jumpPressed: true, jumpHeld: true }, stats());
+    expect(ctrl.velocity.y).toBeGreaterThan(9);
+    let clearance = 0;
+    run(ctrl, 8, () => ({ x: 0, z: 1, jumpPressed: false, jumpHeld: true }), () => {
+      clearance = Math.max(clearance, ctrl.position.y - surfaceY(ctrl.position.z));
+    });
+    expect(clearance).toBeGreaterThan(0.3); // airborne above the face, not re-glued
+  });
+
+  it('jump fires while moving ALONG the slope', () => {
+    const ctrl = makeController([-50, 4.1, 0]);
+    run(ctrl, 30);
+    run(ctrl, 12, () => ({ x: 1, z: 0, jumpPressed: false, jumpHeld: false }));
+    expect(ctrl.grounded).toBe(true);
+    ctrl.update(DT, { x: 1, z: 0, jumpPressed: true, jumpHeld: true }, stats());
+    expect(ctrl.velocity.y).toBeGreaterThan(9);
+  });
+
+  it('coyote works after walking off a slope edge, exactly as from flat ground', () => {
+    // Walking DOWN a slope stays grounded (snap working as designed), so the
+    // airborne case is walking off the wedge's SIDE edge (+x, face ends at -46).
+    const ctrl = makeController([-50, 4.1, 0]);
+    run(ctrl, 30);
+    let leftGroundAt = -1;
+    let sawImpulse = false;
+    run(
+      ctrl,
+      150,
+      (i) => {
+        const press = leftGroundAt >= 0 && i === leftGroundAt + 5; // 0.083s < 0.10 coyote
+        return { x: 1, z: 0, jumpPressed: press, jumpHeld: press };
+      },
+      (i) => {
+        if (leftGroundAt < 0 && !ctrl.grounded) leftGroundAt = i;
+        if (leftGroundAt >= 0 && i <= leftGroundAt + 7 && ctrl.velocity.y > 9) sawImpulse = true;
+      },
+    );
+    expect(leftGroundAt).toBeGreaterThan(0);
+    expect(sawImpulse).toBe(true);
   });
 });
 

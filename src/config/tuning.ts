@@ -29,7 +29,13 @@ export const TUNING = {
     maxSlopeDeg: 48,
     respawnFallY: -20,
     respawnFade: 0.18,
-    squash: { land: [1.25, 0.72, 1.25], jump: [0.82, 1.22, 0.82], recover: 12 },
+    squash: {
+      land: [1.25, 0.72, 1.25],
+      jump: [0.82, 1.22, 0.82],
+      recover: 12,
+      minImpactSpeed: 3, // [feel-fix] land-squash fires only for real falls, never micro-recontacts
+    },
+    jumpSnapSuppress: 0.1, // [feel-fix] ground-snap can't recapture within this window after a jump
     baseStats: {
       mass: 1.0,
       moveSpeed: 6.5,

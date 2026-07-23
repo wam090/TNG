@@ -42,6 +42,7 @@ export class Player {
   private prevYaw = 0;
   private currYaw = 0;
   private fadeTimer = 0;
+  private lastVy = 0; // previous step's vertical velocity = fall speed at impact
 
   private readonly renderPos = new THREE.Vector3();
 
@@ -105,13 +106,18 @@ export class Player {
       jumped: events.jumped,
       landed: events.landed,
     });
+    // Land-squash only for real falls: micro-recontacts (slope flicker, crest
+    // crossings) must never slam the scale mid-run. Impact speed is last
+    // step's vy — the controller zeroes vy on grounding before we see it.
+    const fallSpeedAtImpact = Math.max(0, -this.lastVy);
     this.anim.update(dt, {
       state,
       horizontalSpeed: speed,
       maxSpeed: this.stats.moveSpeed,
       jumped: events.jumped,
-      landed: events.landed,
+      landed: events.landed && fallSpeedAtImpact >= TUNING.player.squash.minImpactSpeed,
     });
+    this.lastVy = this.controller.velocity.y;
 
     // Fell out of the world → instant respawn behind a short fade.
     this.fadeTimer = Math.max(0, this.fadeTimer - dt);
@@ -129,7 +135,7 @@ export class Player {
     this.renderPos.lerpVectors(this.prevPos, this.currPos, alpha);
     this.chassis.root.position.copy(this.renderPos);
     this.chassis.root.rotation.y = lerpAngle(this.prevYaw, this.currYaw, alpha);
-    this.anim.apply(this.chassis.body);
+    this.anim.apply(this.chassis.body, alpha);
 
     const hit = this.getCollider()?.groundProbe(
       this.renderPos.clone().add(CharacterController.upAxis().multiplyScalar(TUNING.player.radius)),

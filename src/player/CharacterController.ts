@@ -36,6 +36,7 @@ export class CharacterController {
   private coyoteTimer = 0;
   private jumpBufferTimer = 0;
   private jumpActive = false; // variable-height window: rising from a jump
+  private snapSuppressTimer = 0; // post-jump window where ground-snap cannot recapture
   private readonly force = new THREE.Vector3(); // external force accumulator
 
   constructor(private readonly getCollider: () => Collider | null) {}
@@ -47,6 +48,7 @@ export class CharacterController {
     this.jumpActive = false;
     this.coyoteTimer = 0;
     this.jumpBufferTimer = 0;
+    this.snapSuppressTimer = 0;
   }
 
   /** The one force-application path. Force ÷ mass = acceleration (SPEC §2.2). */
@@ -62,6 +64,7 @@ export class CharacterController {
     if (intent.jumpPressed) this.jumpBufferTimer = TUNING.player.jumpBuffer;
     else this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - dt);
     if (!this.grounded) this.coyoteTimer = Math.max(0, this.coyoteTimer - dt);
+    this.snapSuppressTimer = Math.max(0, this.snapSuppressTimer - dt);
 
     // --- horizontal: accelerate toward target velocity ---
     const targetX = intent.x * stats.moveSpeed;
@@ -92,6 +95,7 @@ export class CharacterController {
       this.coyoteTimer = 0;
       this.jumpBufferTimer = 0;
       this.jumpActive = true;
+      this.snapSuppressTimer = TUNING.player.jumpSnapSuppress;
       events.jumped = true;
     }
 
@@ -134,8 +138,11 @@ export class CharacterController {
 
   /** Downward probe: grounded state, slope check, ground snap. */
   private ground(collider: Collider, wasGrounded: boolean): void {
-    if (this.velocity.y > 0) {
-      // rising: never ground-snap out of a jump
+    if (this.snapSuppressTimer > 0) {
+      // Just jumped: the snap must not recapture the capsule. This is a timer,
+      // NOT a vy-sign check — slope-climbing produces small +vy via the slide
+      // projection, and treating that as "airborne" made grounding flicker and
+      // silently ate jumps on ramps (the VP's ramp-jump bug).
       this.grounded = false;
       return;
     }
@@ -157,7 +164,10 @@ export class CharacterController {
         this.groundNormal.copy(hit.normal);
         this.grounded = true;
         this.coyoteTimer = TUNING.player.coyoteTime;
-        if (this.velocity.y < 0) this.velocity.y = 0;
+        // Grounded: the snap owns height, so vertical velocity is zeroed in
+        // BOTH signs — slope-slide +vy included. Climb rate comes from the
+        // surface following x/z, and crests are exited horizontally.
+        this.velocity.y = 0;
         return;
       }
     }
