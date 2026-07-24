@@ -29,8 +29,16 @@ export class CameraRig {
     );
   }
 
-  update(focusTarget: THREE.Vector3, velocity: THREE.Vector3, dt: number): void {
+  private lastFovOffset = 0;
+
+  /** fovOffset: sim-computed punch offset (pickup moment); 0 in normal play. */
+  update(focusTarget: THREE.Vector3, velocity: THREE.Vector3, dt: number, fovOffset = 0): void {
     const C = TUNING.camera;
+    if (fovOffset !== this.lastFovOffset) {
+      this.camera.fov = C.fov + fovOffset;
+      this.camera.updateProjectionMatrix();
+      this.lastFovOffset = fovOffset;
+    }
     this.desired.copy(focusTarget);
     this.desired.y += C.heightOffset;
     this.desired.x += velocity.x * C.lookAheadFactor;

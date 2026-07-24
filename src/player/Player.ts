@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 import { TUNING } from '../config/tuning';
 import type { InputSnapshot } from '../core/Input';
-import { DEG2RAD, damp, lerpAngle } from '../core/Math';
+import { clamp, DEG2RAD, damp, lerpAngle } from '../core/Math';
+import type { ElementModule } from '../elements/ElementModule';
+import { resolveStats } from '../elements/StatResolver';
 import type { Collider } from '../world/Collider';
-import { buildChassis, type Chassis } from './ChassisBuilder';
+import { buildChassis, CHASSIS_BASE_COLOR, type Chassis } from './ChassisBuilder';
 import { CharacterController } from './CharacterController';
 import type { PlayerStats } from './PlayerStats';
 import { PlayerStateMachine, type PlayerState } from './PlayerStateMachine';
 import { ProcAnim } from './ProcAnim';
+import { SocketRig } from './Sockets';
 
 /** Camera-relative input (SPEC §4.2): rotate the stick vector by the fixed camera yaw. */
 export function inputToWorld(x: number, y: number): { x: number; z: number } {
@@ -22,19 +25,29 @@ const BLOB_COLOR = '#101216';
 const BLOB_SURFACE_OFFSET = 0.02; // lift above the surface to avoid z-fighting
 
 /**
- * The player entity: stats + controller + chassis + state machine + anim.
- * Elements arrive at M3 as a private loadout; nothing here exposes element
- * identity to the outside world, and it must stay that way.
+ * The player entity: stats + controller + chassis + state machine + anim +
+ * a PRIVATE element loadout. This file is element-BLIND by design: it only
+ * ever iterates ElementModule data (tint hex, stat overrides, attachment
+ * specs) and never names an element. Adding an element must not touch this
+ * file (CLAUDE.md rule 6); the lint tripwire on player/** stays unreachable.
  */
 export class Player {
-  readonly stats: PlayerStats = { ...TUNING.player.baseStats };
+  stats: PlayerStats = { ...TUNING.player.baseStats };
 
+  private readonly baseStats: PlayerStats = { ...TUNING.player.baseStats };
+  private readonly loadout: ElementModule[] = [];
+  private readonly socketRig: SocketRig;
   private readonly controller: CharacterController;
   private readonly chassis: Chassis;
   private readonly stateMachine = new PlayerStateMachine();
   private readonly anim = new ProcAnim();
   private readonly blob: THREE.Mesh;
   private readonly spawn = new THREE.Vector3();
+
+  // Tint lerp (raw-time envelope — punches through dilation, DM ruling).
+  private readonly tintFrom = new THREE.Color(CHASSIS_BASE_COLOR);
+  private readonly tintTo = new THREE.Color(CHASSIS_BASE_COLOR);
+  private tintT = 1;
 
   // Interpolation pair: sim writes curr, render lerps prev→curr by alpha.
   private readonly prevPos = new THREE.Vector3();
@@ -52,6 +65,7 @@ export class Player {
   ) {
     this.controller = new CharacterController(getCollider);
     this.chassis = buildChassis();
+    this.socketRig = new SocketRig(this.chassis.sockets);
     scene.add(this.chassis.root);
 
     this.blob = new THREE.Mesh(
@@ -79,8 +93,52 @@ export class Player {
     this.spawn.copy(feet);
   }
 
-  /** One fixed sim step. */
-  update(dt: number, snap: InputSnapshot): void {
+  /**
+   * Add an element to the loadout. At MAX_ACTIVE the OLDEST is evicted
+   * (swap, not reject — swap-puzzles depend on this later). Stats re-resolve,
+   * attachments swap, body tint lerps toward the new module's tint.
+   */
+  addElement(module: ElementModule): void {
+    while (this.loadout.length >= TUNING.elements.MAX_ACTIVE) {
+      const evicted = this.loadout.shift();
+      if (evicted) this.socketRig.detach(evicted.id);
+    }
+    this.loadout.push(module);
+    this.socketRig.attach(module.id, module.attachments);
+    this.stats = resolveStats(this.baseStats, this.loadout);
+    this.startTint(module.bodyTint);
+  }
+
+  /** Remove every element: stats, tint and attachments revert EXACTLY to base. */
+  clearElements(): void {
+    if (this.loadout.length === 0) return;
+    this.socketRig.detachAll();
+    this.loadout.length = 0;
+    this.stats = resolveStats(this.baseStats, this.loadout);
+    this.startTint(CHASSIS_BASE_COLOR);
+  }
+
+  get elementCount(): number {
+    return this.loadout.length;
+  }
+
+  /** Current body colour (hex) — used by tests to prove tint reversibility. */
+  get tintHex(): string {
+    return `#${this.chassis.material.color.getHexString().toUpperCase()}`;
+  }
+
+  private startTint(targetHex: string): void {
+    this.tintFrom.copy(this.chassis.material.color);
+    this.tintTo.set(targetHex);
+    this.tintT = 0;
+  }
+
+  /**
+   * One fixed sim step. `dt` is world time (scaled by pickup dilation);
+   * `rawDt` is unscaled step time for feedback envelopes that must punch
+   * through slow-mo at full speed (tint lerp — DM ruling).
+   */
+  update(dt: number, rawDt: number, snap: InputSnapshot): void {
     this.prevPos.copy(this.currPos);
     this.prevYaw = this.currYaw;
 
@@ -118,6 +176,20 @@ export class Player {
       landed: events.landed && fallSpeedAtImpact >= TUNING.player.squash.minImpactSpeed,
     });
     this.lastVy = this.controller.velocity.y;
+
+    // Attachments follow and animate on world (scaled) time.
+    this.socketRig.update(dt, {
+      state,
+      grounded: this.controller.grounded,
+      horizontalSpeed: speed,
+      verticalVelocity: this.controller.velocity.y,
+    });
+
+    // Tint lerp on RAW time: a fixed 0.35s envelope regardless of dilation.
+    if (this.tintT < 1) {
+      this.tintT = clamp(this.tintT + rawDt / TUNING.elements.tintLerpTime, 0, 1);
+      this.chassis.material.color.lerpColors(this.tintFrom, this.tintTo, this.tintT);
+    }
 
     // Fell out of the world → instant respawn behind a short fade.
     this.fadeTimer = Math.max(0, this.fadeTimer - dt);

@@ -1,3 +1,4 @@
+import { ELEMENT_IDS, isElementId, type ElementId } from '../elements/ElementModule';
 import { Materials, type MaterialName } from '../render/Materials';
 
 /**
@@ -32,12 +33,19 @@ export interface LevelBlock {
   mat: MaterialName;
 }
 
+export interface LevelTokenData {
+  id: string;
+  element: ElementId;
+  pos: Vec3Tuple;
+}
+
 export interface LevelData {
   id: string;
   name: string;
   spawn: Vec3Tuple;
   env: LevelEnv;
   blocks: LevelBlock[];
+  tokens: LevelTokenData[];
 }
 
 // Defaults when "env" is omitted — matches SPEC §7's sample environment.
@@ -126,9 +134,20 @@ function parseBlock(raw: unknown, index: number): LevelBlock {
   };
 }
 
+function parseToken(raw: unknown, index: number): LevelTokenData {
+  const context = `tokens[${index.toFixed(0)}]`;
+  const o = asRecord(raw, context);
+  const id = asString(o.id, context, 'id');
+  const element = asString(o.element, `${context} ("${id}")`, 'element');
+  if (!isElementId(element)) {
+    fail(`${context} ("${id}")`, `unknown element "${element}" (expected ${ELEMENT_IDS.join(' | ')})`);
+  }
+  return { id, element, pos: asVec3(o.pos, `${context} ("${id}")`, 'pos') };
+}
+
 /**
  * Validate untrusted level JSON into LevelData. Unknown top-level keys
- * (tokens, props, shards, goal…) are deliberately ignored so M4 content can
+ * (props, shards, goal…) are deliberately ignored so M4 content can
  * live in the file before the systems that consume it exist.
  */
 export function parseLevel(raw: unknown): LevelData {
@@ -138,11 +157,17 @@ export function parseLevel(raw: unknown): LevelData {
   if (!Array.isArray(o.blocks) || o.blocks.length === 0) {
     fail(context, '"blocks" must be a non-empty array');
   }
+  let tokens: LevelTokenData[] = [];
+  if (o.tokens !== undefined) {
+    if (!Array.isArray(o.tokens)) fail(context, '"tokens" must be an array');
+    tokens = o.tokens.map((t: unknown, i: number) => parseToken(t, i));
+  }
   return {
     id,
     name: o.name === undefined ? id : asString(o.name, context, 'name'),
     spawn: asVec3(o.spawn, context, 'spawn'),
     env: parseEnv(o.env, context),
     blocks: o.blocks.map((b: unknown, i: number) => parseBlock(b, i)),
+    tokens,
   };
 }

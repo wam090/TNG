@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import type { Debug } from '../core/Debug';
+import type { EventBus } from '../core/Events';
+import type { ElementRegistry } from '../elements/ElementRegistry';
 import type { Collider } from './Collider';
 import type { BuiltLevel, LevelBuilder } from './LevelBuilder';
 import { LevelParseError, parseLevel } from './LevelSchema';
+import { Token } from './props/Token';
 
 const WIREFRAME_COLOR = '#39FF6A'; // debug green, X-ray (drawn through geometry)
 
@@ -21,10 +24,14 @@ export class Level {
     transparent: true,
   });
 
+  private tokens: Token[] = [];
+
   constructor(
     private readonly scene: THREE.Scene,
     private readonly builder: LevelBuilder,
     private readonly debug: Debug,
+    private readonly registry: ElementRegistry,
+    private readonly bus: EventBus,
   ) {
     debug.registerToggle('F2', (on) => {
       if (this.wireframe) this.wireframe.visible = on;
@@ -36,11 +43,26 @@ export class Level {
     const data = parseLevel(raw); // validate BEFORE tearing anything down
     if (this.wireframe) this.scene.remove(this.wireframe);
     this.built?.dispose();
+    for (const token of this.tokens) token.dispose();
 
     this.built = this.builder.build(data, this.scene);
     this.wireframe = new THREE.Mesh(this.built.collider.geometry, this.wireframeMaterial);
     this.wireframe.visible = this.debug.isToggleOn('F2');
     this.scene.add(this.wireframe);
+
+    // Tokens rebuild with the level (dev note: a picked-up Core reappears on
+    // JSON hot-reload — re-picking is a harmless same-module swap).
+    this.tokens = data.tokens.map(
+      (spec) =>
+        new Token(spec, this.registry.get(spec.element).bodyTint, this.scene, (picked) => {
+          this.bus.emit('tokenPickup', { element: picked.element, tokenId: picked.id });
+        }),
+    );
+  }
+
+  /** One fixed sim step (world/scaled time) for level-owned props. */
+  update(dt: number, playerFeet: THREE.Vector3): void {
+    for (const token of this.tokens) token.update(dt, playerFeet);
   }
 
   /** Hot-reload path: malformed JSON keeps the previous level and logs the clear error. */

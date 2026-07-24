@@ -9,6 +9,7 @@
     "sunDir": [-0.4, -1.0, -0.3],
     "ambient": 0.55
   },
+  "tokens": [{ "id": "core_wind_01", "element": "wind", "pos": [-3, 1.2, -3] }],
   "blocks": [
     { "type": "box", "pos": [0, -0.5, 0], "size": [30, 1, 24], "mat": "stone" },
     { "type": "ramp", "pos": [5, 1, -3], "size": [4, 2, 6], "rotY": 0, "mat": "stone" },

@@ -1,15 +1,20 @@
 import * as THREE from 'three';
 import levelJson from './levels/level01.json';
+import { buildElementRegistry } from './config/elements';
 import { Debug } from './core/Debug';
+import { EventBus } from './core/Events';
 import { Game } from './core/Game';
 import { installHarness } from './core/Harness';
 import { Input } from './core/Input';
 import { Time } from './core/Time';
+import { ELEMENT_IDS } from './elements/ElementModule';
+import { PickupFx } from './elements/PickupFx';
 import { Player } from './player/Player';
 import { CameraRig } from './render/CameraRig';
 import { Materials } from './render/Materials';
 import { Renderer } from './render/Renderer';
 import { FadeOverlay } from './ui/FadeOverlay';
+import { Hud } from './ui/Hud';
 import { installCoordPicker } from './world/CoordPicker';
 import { Level } from './world/Level';
 import { LevelBuilder } from './world/LevelBuilder';
@@ -20,7 +25,11 @@ if (!app) throw new Error('#app mount point missing from index.html');
 const scene = new THREE.Scene();
 const debug = new Debug();
 const materials = new Materials();
-const level = new Level(scene, new LevelBuilder(materials), debug);
+const registry = buildElementRegistry();
+const bus = new EventBus();
+const hud = new Hud();
+const pickupFx = new PickupFx();
+const level = new Level(scene, new LevelBuilder(materials), debug, registry, bus);
 level.load(levelJson);
 
 const player = new Player(scene, () => level.collider);
@@ -46,6 +55,35 @@ const game = new Game({
   scene,
   player,
   fade: new FadeOverlay(),
+  pickupFx,
+  updatables: [
+    {
+      update: (dt: number): void => {
+        level.update(dt, player.position);
+      },
+    },
+  ],
+});
+
+// The pickup moment: loadout + HUD + dilation/FOV stub. Element-blind wiring —
+// everything below is module DATA looked up from the id the token carried.
+bus.on('tokenPickup', ({ element }) => {
+  const module = registry.get(element);
+  player.addElement(module);
+  hud.setSlot(module.bodyTint);
+  pickupFx.trigger();
+});
+
+// F4 (CLAUDE.md rule 10): grant/revoke the first registered element for testing.
+debug.registerToggle('F4', (on) => {
+  if (on) {
+    const module = registry.get(ELEMENT_IDS[0]);
+    player.addElement(module);
+    hud.setSlot(module.bodyTint);
+  } else {
+    player.clearElements();
+    hud.setSlot(null);
+  }
 });
 
 if (import.meta.env.DEV) {

@@ -147,4 +147,4 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`M2 — Character + controller (DRAFT — feel pass pending).` Machine part done: four gates green, tunnelling arbiter test green, render interpolation + shadow/blob present, run_east + jump_arc goldens blessed after viewing. Real part is the owner's: play it, send five bullets on what feels wrong. Do not tune unprompted.
+`M3 — Element architecture.` Done when: touching the Core turns the body grey and jumps get higher with zero element-aware changes to Player.ts; resolveStats unit-tested incl. the 2-element stack; eviction-at-cap and grant→revoke reversibility tested (no residue); the pickup dilation window reproduces at 0 px across harness runs; F4 grants/revokes; all four gates green.

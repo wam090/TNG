@@ -1,0 +1,5 @@
+{
+  "name": "pickup",
+  "steps": 200,
+  "segments": [{ "from": 0, "until": 50, "hold": ["up"] }]
+}

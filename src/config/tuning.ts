@@ -66,6 +66,7 @@ export const TUNING = {
     MAX_ACTIVE: 1, // ← flip to 2+ when you're ready to stack. Architecture already supports it.
     pickupTimeDilation: { scale: 0.25, duration: 0.3 },
     tintLerpTime: 0.35,
+    fovPunch: { delta: -4, inTime: 0.1, outTime: 0.4 }, // [M3+ stub feel — VP owns these at M5]
   },
 
   wind: {
@@ -105,6 +106,13 @@ export const TUNING = {
     windZone: { defaultForce: 9.5, period: 4.0, duration: 1.6, telegraph: 0.6 },
     updraft: { velocity: 9.0, maxHeight: 12 },
     windmill: { torqueDecay: 0.85, activateAt: 6.0 }, // rad/s to fire signal
+    token: {
+      spinRate: 1.4, // rad/s
+      bobAmp: 0.12,
+      bobPeriod: 2.6,
+      visualRadius: 0.3,
+      pickupRadius: 0.9,
+    }, // [M3+]
   },
 
   // ── [M0+] sections below. scaffold.* dies at M1 when the level pipeline lands. ──

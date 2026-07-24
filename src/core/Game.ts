@@ -4,10 +4,16 @@ import type { Debug } from './Debug';
 import type { InputSource } from './Input';
 import { Rng } from './Rng';
 import type { Time } from './Time';
+import type { PickupFx } from '../elements/PickupFx';
 import type { Player } from '../player/Player';
 import type { CameraRig } from '../render/CameraRig';
 import type { Renderer } from '../render/Renderer';
 import type { FadeOverlay } from '../ui/FadeOverlay';
+
+/** Anything stepped on world (dilation-scaled) time each fixed step. */
+export interface Updatable {
+  update(dt: number): void;
+}
 
 export interface GameParts {
   time: Time;
@@ -18,6 +24,8 @@ export interface GameParts {
   scene: THREE.Scene;
   player: Player;
   fade?: FadeOverlay;
+  pickupFx?: PickupFx;
+  updatables?: Updatable[];
 }
 
 /** JSON-serialisable snapshot for the test harness (window.__stillmote.state()). */
@@ -69,12 +77,17 @@ export class Game {
     for (let i = 0; i < n; i += 1) {
       this.update(TUNING.loop.fixedDt);
       player.syncVisual(1);
-      cameraRig.update(player.renderPosition, player.velocity, TUNING.loop.fixedDt);
+      cameraRig.update(
+        player.renderPosition,
+        player.velocity,
+        TUNING.loop.fixedDt,
+        this.parts.pickupFx?.fovOffset ?? 0,
+      );
       debug.frame(this.debugStats(TUNING.loop.fixedDt, 1, false));
     }
     if (n === 0) {
       player.syncVisual(1);
-      cameraRig.update(player.renderPosition, player.velocity, 0);
+      cameraRig.update(player.renderPosition, player.velocity, 0, this.parts.pickupFx?.fovOffset ?? 0);
       debug.frame(this.debugStats(0, 0, false));
     }
     renderer.render(scene, cameraRig.camera);
@@ -127,15 +140,26 @@ export class Game {
     // the previous and current sim transforms by the accumulator fraction.
     const alpha = this.accumulator / TUNING.loop.fixedDt;
     player.syncVisual(alpha);
-    cameraRig.update(player.renderPosition, player.velocity, frameDt);
+    cameraRig.update(player.renderPosition, player.velocity, frameDt, this.parts.pickupFx?.fovOffset ?? 0);
     fade?.set(player.fadeOpacity);
     renderer.render(scene, cameraRig.camera);
     debug.frame(this.debugStats(frameDt, steps, drained));
   }
 
+  /**
+   * One fixed step. Time dilation is ONLY a scale on the dt handed to sim
+   * consumers — the fixed step and the accumulator never see it, so harness
+   * runs stay deterministic through the whole dilation window. PickupFx and
+   * the input poll tick on RAW step time.
+   */
   private update(dt: number): void {
     const snap = this.inputSource.poll();
-    this.parts.player.update(dt, snap);
+    this.parts.pickupFx?.update(dt);
+    const effDt = dt * (this.parts.pickupFx?.timeScale ?? 1);
+    this.parts.player.update(effDt, dt, snap);
+    if (this.parts.updatables) {
+      for (const u of this.parts.updatables) u.update(effDt);
+    }
     this.stepCount += 1;
   }
 

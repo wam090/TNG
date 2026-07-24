@@ -4,7 +4,8 @@ import { SOCKET_OFFSETS, type SocketId } from './Sockets';
 
 // SPEC §3.1 — structural chassis constants (identity, not feel; the visor may
 // migrate to tuning later since the face is identity and will get fiddled with).
-const BODY_COLOR = '#F2EDE4';
+export const CHASSIS_BASE_COLOR = '#F2EDE4'; // tint target when the loadout empties
+const BODY_COLOR = CHASSIS_BASE_COLOR;
 const BODY_ROUGHNESS = 0.85;
 const HEAD_RADIUS = 0.28;
 const HEAD_OFFSET_Y = 0.62; // above capsule centre
@@ -18,6 +19,8 @@ export interface Chassis {
   /** Body group — ProcAnim scales/leans/bobs this, pivoted at the feet. */
   body: THREE.Object3D;
   sockets: ReadonlyMap<SocketId, THREE.Object3D>;
+  /** The shared body material — element tint lerps drive its colour. */
+  material: THREE.MeshStandardMaterial;
 }
 
 /**
@@ -77,5 +80,5 @@ export function buildChassis(): Chassis {
     sockets.set(id, socket);
   }
 
-  return { root, body, sockets };
+  return { root, body, sockets, material };
 }

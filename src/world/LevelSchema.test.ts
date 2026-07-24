@@ -27,8 +27,25 @@ describe('parseLevel', () => {
     expect(data.env.sunIntensity).toBe(1.0);
   });
 
-  it('ignores unknown top-level keys (future props/tokens/shards/goal)', () => {
-    expect(() => parseLevel(level({ tokens: [{}], props: [{}], goal: {} }))).not.toThrow();
+  it('ignores unknown top-level keys (future props/shards/goal)', () => {
+    expect(() => parseLevel(level({ props: [{}], shards: [{}], goal: {} }))).not.toThrow();
+  });
+
+  it('parses tokens and defaults to none', () => {
+    expect(parseLevel(level()).tokens).toEqual([]);
+    const data = parseLevel(
+      level({ tokens: [{ id: 'core_1', element: 'wind', pos: [1, 2, 3] }] }),
+    );
+    expect(data.tokens).toEqual([{ id: 'core_1', element: 'wind', pos: [1, 2, 3] }]);
+  });
+
+  it('names the token and lists valid ids on a bad element', () => {
+    expect(() =>
+      parseLevel(level({ tokens: [{ id: 'core_1', element: 'plasma', pos: [0, 0, 0] }] })),
+    ).toThrow(/tokens\[0\].*unknown element "plasma".*wind \| fire \| water \| earth/);
+    expect(() => parseLevel(level({ tokens: [{ id: 'core_1', element: 'wind' }] }))).toThrow(
+      /tokens\[0\].*"pos" must be an array of 3 numbers/,
+    );
   });
 
   it('names the block and the problem on a bad type', () => {
