@@ -3,6 +3,31 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
+const ELEMENT_NAMES = 'wind|fire|water|earth';
+const TAGS = 'light|heavy|air|burning|wet|earthen'; // SPEC §8.6 Tag union
+
+/** Ban a set of bare string literals, in both quote and template form. */
+const banLiterals = (alternation, message) => [
+  { selector: `Literal[value=/^(${alternation})$/]`, message },
+  { selector: `TemplateElement[value.cooked=/^(${alternation})$/]`, message },
+];
+
+const ELEMENT_MSG =
+  'Props and player code react to events and quantities, never to element names. See SPEC.md §2.3.';
+const TAG_MSG =
+  'Props may not branch on TAGS either — a tag check is element identity through the back door. ' +
+  'React to events, quantities (force, mass), signals and overlap. WO-003.';
+
+// CLAUDE.md Stack: "No physics engine." This turns that from a grep into a rule.
+const PHYSICS_IMPORTS = [
+  '@dimforge/*',
+  'cannon*',
+  'ammo*',
+  'oimo*',
+  'three/examples/jsm/physics/*',
+  'three/addons/physics/*',
+];
+
 export default tseslint.config(
   { ignores: ['dist/**'] },
 
@@ -57,20 +82,44 @@ export default tseslint.config(
     rules: { 'no-restricted-properties': 'off' },
   },
 
-  // SPEC.md §2.3 — the most important rule in this config. Props and player
-  // code react to events and tags; element names must never appear there.
+  // SPEC.md §2.3 — the most important rule in this config. Player code may
+  // read tags (it owns the loadout); element NAMES must never appear.
   {
-    files: ['src/world/props/**/*.ts', 'src/player/**/*.ts'],
+    files: ['src/player/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', ...banLiterals(ELEMENT_NAMES, ELEMENT_MSG)],
+    },
+  },
+
+  // Props are held to the stricter bar (WO-003): no element names AND no tags.
+  // A windmill knows it got pushed. It does not know what pushed it, and it
+  // does not get to ask whether the pusher was 'air'.
+  {
+    files: ['src/world/props/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',
+        ...banLiterals(ELEMENT_NAMES, ELEMENT_MSG),
+        ...banLiterals(TAGS, TAG_MSG),
+      ],
+    },
+  },
+
+  // CLAUDE.md Stack: "No physics engine." Mechanically enforced, not grepped.
+  {
+    files: ['src/**/*.ts', 'tools/**/*.mjs'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
         {
-          selector: 'Literal[value=/^(wind|fire|water|earth)$/]',
-          message: 'Props react to events and tags, never to element names. See SPEC.md §2.3.',
-        },
-        {
-          selector: 'TemplateElement[value.cooked=/^(wind|fire|water|earth)$/]',
-          message: 'Props react to events and tags, never to element names. See SPEC.md §2.3.',
+          patterns: [
+            {
+              group: PHYSICS_IMPORTS,
+              message:
+                'No physics engine. Collision is hand-rolled over three-mesh-bvh (SPEC §8.3). ' +
+                'If you think you need one, stop and ask — CLAUDE.md hard rule 1.',
+            },
+          ],
         },
       ],
     },

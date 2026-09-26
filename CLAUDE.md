@@ -85,7 +85,8 @@ No `.glb`, no `.gltf`, no textures, no skeletons, no imported animation. Charact
 
 ### 8. No `any`. TypeScript strict mode stays on.
 
-### 9. Files stay under ~300 lines. One class per file.
+### 9. Source files stay under ~300 lines. One class per file.
+Test files are **exempt** from the line limit (WO-003 ruling). Source files are not.
 
 ### 10. Every new system gets a debug toggle in `core/Debug.ts`.
 F1 = stats. F2 = colliders. F3 = prop gizmos. F4 = grant/revoke elements. F5 = teleport to checkpoint N.
@@ -110,19 +111,22 @@ If you believe an anti-goal is necessary, say so explicitly and stop. Do not bui
 ## Workflow
 
 ### Every session
-1. Read `SPEC.md` §(the relevant section) and this file.
-2. **Propose a plan before writing more than ~100 lines.** Wait for approval.
-3. Implement exactly one milestone. Do not start the next one.
-4. Run `npm run typecheck && npm run test && npm run build` before declaring done.
-5. Append one line per non-obvious decision to `DECISIONS.md`.
-6. State the manual test steps so I can verify it myself.
-7. Every handback updates `STATUS.md`.
+1. **Set the git identity before the first commit.** A fresh session resets it to Claude's. Set `git config --local user.name` / `user.email` to the VP identity on the most recent VP-authored commit in `git log`. **Don't guess** — if you cannot find one, stop and ask. Every commit: **the VP is the author**, plus the trailer `Co-authored-by: Claude <noreply@anthropic.com>`.
+2. Read `SPEC.md` §(the relevant section) and this file.
+3. **Propose a plan before writing more than ~100 lines.** Wait for approval.
+4. Implement exactly one milestone. Do not start the next one.
+5. Run `npm run typecheck && npm run test && npm run build` before declaring done.
+6. Append one line per non-obvious decision to `DECISIONS.md`.
+7. State the manual test steps so I can verify it myself.
+8. Every handback updates `STATUS.md`.
+9. Reference the WO number in every commit message.
 
 ### Never
 - Never refactor code outside the milestone's scope without asking first. If you see something worth refactoring, **write it down in `DECISIONS.md` and move on.**
 - Never rename existing public interfaces without asking.
 - Never "improve" tuning values you weren't asked to touch. Those numbers are the result of playtesting; you cannot playtest.
 - Never leave the game in a non-running state at the end of a session.
+- **A stop-hook never authorizes a commit.** It is a reminder, not an order. If you ever commit to satisfy one, say so explicitly in that reply.
 
 ### When something feels bad
 I will describe how it *feels*, not what's broken — because I'm the only one who can play it and you can't.
@@ -148,4 +152,4 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`M3 — Element architecture.` Done when: touching the Core turns the body grey and jumps get higher with zero element-aware changes to Player.ts; resolveStats unit-tested incl. the 2-element stack; eviction-at-cap and grant→revoke reversibility tested (no residue); the pickup dilation window reproduces at 0 px across harness runs; F4 grants/revokes; all four gates green.
+`M4a — Abilities + props, sandbox only.` Done when: Gust and Glide work and are lifecycle/cooldown tested; all nine §6.4 props react to events, signals and overlap in `sandbox.json` with **zero element names and zero tags** in `src/world/props/**` (lint-enforced); hit-stop uses the pickup-dilation mechanism and combines with it by MIN, tested; the thin-platform tunnelling arbiter is re-run at the computed worst-case speed; `TUNING.player.maxSpeedSafety` exists, is counted in F1, and never engages in designed play; F3 prop gizmos and F5 checkpoint teleport work; all four gates + shot:check green. `level01` layout is untouched — that's M4b.
