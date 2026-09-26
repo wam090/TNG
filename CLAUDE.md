@@ -116,6 +116,7 @@ If you believe an anti-goal is necessary, say so explicitly and stop. Do not bui
 4. Run `npm run typecheck && npm run test && npm run build` before declaring done.
 5. Append one line per non-obvious decision to `DECISIONS.md`.
 6. State the manual test steps so I can verify it myself.
+7. Every handback updates `STATUS.md`.
 
 ### Never
 - Never refactor code outside the milestone's scope without asking first. If you see something worth refactoring, **write it down in `DECISIONS.md` and move on.**
