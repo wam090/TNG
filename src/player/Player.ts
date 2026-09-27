@@ -241,6 +241,10 @@ export class Player {
     return this.controller.grounded;
   }
 
+  get safetyCapHits(): number {
+    return this.controller.safetyCapHits;
+  }
+
   get renderPosition(): THREE.Vector3 {
     return this.renderPos;
   }

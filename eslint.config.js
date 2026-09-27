@@ -82,10 +82,10 @@ export default tseslint.config(
     rules: { 'no-restricted-properties': 'off' },
   },
 
-  // SPEC.md §2.3 — the most important rule in this config. Player code may
-  // read tags (it owns the loadout); element NAMES must never appear.
+  // SPEC.md §2.3 — the most important rule in this config. Player code and the
+  // element-blind ability runner may read tags; element NAMES must never appear.
   {
-    files: ['src/player/**/*.ts'],
+    files: ['src/player/**/*.ts', 'src/abilities/**/*.ts'],
     rules: {
       'no-restricted-syntax': ['error', ...banLiterals(ELEMENT_NAMES, ELEMENT_MSG)],
     },

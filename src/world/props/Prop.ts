@@ -1,0 +1,38 @@
+import type * as THREE from 'three';
+import type { PushEvent } from '../../core/Events';
+import type { Signals } from '../Signals';
+
+/** All a prop may know about the player: where it is, and a way to push it. */
+export interface PropPlayerView {
+  readonly feet: THREE.Vector3;
+  /** The mass path — the prop never learns the mass; the controller divides by it. */
+  applyForce(force: THREE.Vector3): void;
+}
+
+/** What props can reach each step. No element, no tag, no loadout — ever. */
+export interface PropContext {
+  player: PropPlayerView;
+  signals: Signals;
+  setCheckpoint(id: string, feet: THREE.Vector3): void;
+  collectShard(id: string): void;
+  completeLevel(): void;
+}
+
+/**
+ * SPEC §6.4 prop contract. Props react to EVENTS (onPush), QUANTITIES
+ * (force), SIGNALS and OVERLAP. They never react to element names or tags
+ * (CLAUDE.md hard rule 5, lint-enforced in this folder).
+ */
+export interface Prop {
+  readonly id: string;
+  /** One fixed sim step on world (dilation-scaled) time. */
+  update(dt: number, ctx: PropContext): void;
+  /** World point a push cone must reach to hit this prop; null = not pushable. */
+  pushTarget(): THREE.Vector3 | null;
+  onPush(e: PushEvent, ctx: PropContext): void;
+  /** World-space collision geometry while solid (e.g. a closed gate); null = not solid now. */
+  solid(): THREE.BufferGeometry | null;
+  /** F3 gizmo: volumes, thresholds, state. Created once, shown/hidden by Level. */
+  readonly gizmo: THREE.Object3D;
+  dispose(): void;
+}

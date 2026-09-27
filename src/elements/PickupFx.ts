@@ -1,33 +1,31 @@
 import { TUNING } from '../config/tuning';
 import { clamp } from '../core/Math';
+import type { TimeScale } from '../core/TimeScale';
+
+const DILATION_SOURCE = 'pickupDilation';
 
 /**
  * The pickup moment, stub form: time dilation + FOV punch envelopes.
  * M5 replaces the spectacle; this timing skeleton is permanent.
  *
- * DETERMINISM CONTRACT: ticks on RAW fixed-step time, handed in by Game once
- * per sim step. Dilation is only ever a scale applied to the dt that sim
- * consumers receive — it never touches the accumulator or the fixed step, so
- * the harness steps through the whole window identically on every run.
+ * Dilation is pushed into the shared TimeScale (the same mechanism Gust's
+ * hit-stop uses — they combine by MIN). The FOV envelope ticks on RAW
+ * fixed-step time, handed in by Game once per sim step.
  */
 export class PickupFx {
-  private dilationRemaining = 0;
   private fovTimer = Infinity; // Infinity = idle
 
+  constructor(private readonly timeScale: TimeScale) {}
+
   trigger(): void {
-    this.dilationRemaining = TUNING.elements.pickupTimeDilation.duration;
+    const D = TUNING.elements.pickupTimeDilation;
+    this.timeScale.push(DILATION_SOURCE, D.scale, D.duration);
     this.fovTimer = 0;
   }
 
   /** Called once per fixed step with RAW (unscaled) dt. */
   update(rawDt: number): void {
-    this.dilationRemaining = Math.max(0, this.dilationRemaining - rawDt);
     this.fovTimer += rawDt;
-  }
-
-  /** Scale for the dt handed to sim consumers this step. */
-  get timeScale(): number {
-    return this.dilationRemaining > 0 ? TUNING.elements.pickupTimeDilation.scale : 1;
   }
 
   /** FOV offset envelope: base → base+delta over inTime, back over outTime. */

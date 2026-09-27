@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TUNING } from '../config/tuning';
-import { DEG2RAD } from '../core/Math';
+import { damp, DEG2RAD } from '../core/Math';
 import type { Collider } from '../world/Collider';
 import type { PlayerStats } from './PlayerStats';
 
@@ -36,8 +36,14 @@ export class CharacterController {
   private coyoteTimer = 0;
   private jumpBufferTimer = 0;
   private jumpActive = false; // variable-height window: rising from a jump
-  private snapSuppressTimer = 0; // post-jump window where ground-snap cannot recapture
-  private readonly force = new THREE.Vector3(); // external force accumulator
+  private snapSuppressTimer = 0; // post-jump/launch window where ground-snap cannot recapture
+  private readonly force = new THREE.Vector3(); // external force accumulator (this step)
+  private readonly impulse = new THREE.Vector3(); // external impulse accumulator (this step)
+  // Horizontal push velocity (y stays 0). Steering never brakes it; it fades
+  // by externalDrag. Without it, input steering absorbed every wind force.
+  private readonly external = new THREE.Vector3();
+  private safetyHits = 0;
+  private airborneTime = 0;
 
   constructor(private readonly getCollider: () => Collider | null) {}
 
@@ -49,11 +55,20 @@ export class CharacterController {
     this.coyoteTimer = 0;
     this.jumpBufferTimer = 0;
     this.snapSuppressTimer = 0;
+    this.airborneTime = 0;
+    this.force.set(0, 0, 0);
+    this.impulse.set(0, 0, 0);
+    this.external.set(0, 0, 0);
   }
 
   /** The one force-application path. Force ÷ mass = acceleration (SPEC §2.2). */
   applyForce(force: THREE.Vector3): void {
     this.force.add(force);
+  }
+
+  /** Instant push through the same mass path: Δv = impulse ÷ mass. */
+  applyImpulse(impulse: THREE.Vector3): void {
+    this.impulse.add(impulse);
   }
 
   update(dt: number, intent: MoveIntent, stats: PlayerStats): ControllerEvents {
@@ -66,7 +81,11 @@ export class CharacterController {
     if (!this.grounded) this.coyoteTimer = Math.max(0, this.coyoteTimer - dt);
     this.snapSuppressTimer = Math.max(0, this.snapSuppressTimer - dt);
 
-    // --- horizontal: accelerate toward target velocity ---
+    // --- horizontal: steer the SELF component toward the input target. The
+    // external push channel is lifted off first and put back after the mass
+    // path, so steering can never brake a push (wind would otherwise vanish) ---
+    this.velocity.x -= this.external.x;
+    this.velocity.z -= this.external.z;
     const targetX = intent.x * stats.moveSpeed;
     const targetZ = intent.z * stats.moveSpeed;
     const hasInput = intent.x !== 0 || intent.z !== 0;
@@ -107,9 +126,26 @@ export class CharacterController {
     if (this.velocity.y < -stats.maxFallSpeed) this.velocity.y = -stats.maxFallSpeed;
     if (this.velocity.y <= 0) this.jumpActive = false;
 
-    // --- the mass path: external forces integrate every step (F/m, SPEC §2.2) ---
-    this.velocity.addScaledVector(this.force, dt / stats.mass);
+    // --- the mass path (SPEC §2.2): forces integrate F/m·dt, impulses J/m.
+    // Horizontal → the external channel; vertical → vy (gravity opposes it) ---
+    const invMass = 1 / stats.mass;
+    this.external.multiplyScalar(1 - damp(TUNING.player.externalDrag, dt));
+    this.external.x += (this.force.x * dt + this.impulse.x) * invMass;
+    this.external.z += (this.force.z * dt + this.impulse.z) * invMass;
+    this.velocity.y += (this.force.y * dt + this.impulse.y) * invMass;
+    // An upward kick, or a lift stronger than gravity, launches like a jump:
+    // the snap can't recapture, and the variable-jump window is over.
+    const launched = this.impulse.y > 0 || this.force.y * invMass > stats.gravity;
     this.force.set(0, 0, 0);
+    this.impulse.set(0, 0, 0);
+    this.velocity.x += this.external.x;
+    this.velocity.z += this.external.z;
+    if (launched) {
+      this.grounded = false;
+      this.jumpActive = false;
+      this.snapSuppressTimer = TUNING.player.jumpSnapSuppress;
+    }
+    this.enforceSpeedSafety();
 
     // --- integrate + sweep + slide ---
     const wasGrounded = this.grounded;
@@ -125,6 +161,11 @@ export class CharacterController {
       for (const n of sweep.normals) {
         const into = this.velocity.dot(n);
         if (into < 0) this.velocity.addScaledVector(n, -into);
+        const pushInto = this.external.dot(n);
+        if (pushInto < 0) {
+          this.external.addScaledVector(n, -pushInto);
+          this.external.y = 0;
+        }
       }
       this.ground(collider, wasGrounded);
     } else {
@@ -133,7 +174,22 @@ export class CharacterController {
     }
 
     if (this.grounded && !wasGrounded) events.landed = true;
+    this.airborneTime = this.grounded ? 0 : this.airborneTime + dt;
     return events;
+  }
+
+  /**
+   * Clamp |velocity| to maxSpeedSafety (under the verified 60 m/s collision
+   * envelope) and count it. Designed play must never reach this.
+   */
+  private enforceSpeedSafety(): void {
+    const max = TUNING.player.maxSpeedSafety;
+    const speed = this.velocity.length();
+    if (speed <= max) return;
+    const k = max / speed;
+    this.velocity.multiplyScalar(k);
+    this.external.multiplyScalar(k);
+    this.safetyHits += 1;
   }
 
   /** Downward probe: grounded state, slope check, ground snap. */
@@ -177,6 +233,30 @@ export class CharacterController {
       const into = this.velocity.dot(hit.normal);
       if (into < 0) this.velocity.addScaledVector(hit.normal, -into);
     }
+  }
+
+  /** Is there walkable-or-not ground within `distance` below the feet? */
+  groundWithin(distance: number): boolean {
+    const collider = this.getCollider();
+    if (!collider) return false;
+    const origin = this.position.clone();
+    origin.y += TUNING.player.radius;
+    return collider.groundProbe(origin, TUNING.player.radius + distance) !== null;
+  }
+
+  /** Seconds since the capsule last stood on ground (0 while grounded). */
+  get airTime(): number {
+    return this.airborneTime;
+  }
+
+  /** The horizontal push component currently riding on velocity. */
+  get externalVelocity(): Readonly<THREE.Vector3> {
+    return this.external;
+  }
+
+  /** How many steps the speed safety cap has clamped (F1). */
+  get safetyCapHits(): number {
+    return this.safetyHits;
   }
 
   /** Convenience for tests/HUD. */

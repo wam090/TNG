@@ -6,6 +6,7 @@ import { LevelBuilder } from '../world/LevelBuilder';
 import { parseLevel } from '../world/LevelSchema';
 import { CharacterController, type MoveIntent } from './CharacterController';
 import { inputToWorld } from './Player';
+import type { PlayerStats } from './PlayerStats';
 
 // Floor, a THIN platform (the tunnelling arbiter), a 45° walkable wedge,
 // a 63° too-steep wedge, and a raised ledge for the coyote test.
@@ -164,6 +165,56 @@ describe('tunnelling — THE ARBITER (owner veto: test, not assertion)', () => {
   });
 });
 
+// The M4a worst case (WO-003): run at moveSpeed, ride a wind zone at terminal
+// speed force/(mass·drag), take a full Gust recoil, all while at max fall.
+// Computed from tuning, so a retune re-runs the arbiter at the new number.
+const LIGHT = (): PlayerStats => ({ ...TUNING.player.baseStats, ...TUNING.wind.statMods });
+/** Fixed-step terminal push speed: decay-then-add settles ~k·dt/2 above force/(mass·drag). */
+function zoneTerminal(mass: number): number {
+  const perStep = (TUNING.props.windZone.defaultForce * DT) / mass;
+  return perStep / (1 - Math.exp(-TUNING.player.externalDrag * DT));
+}
+function worstCaseSpeed(): { horizontal: number; total: number } {
+  const s = LIGHT();
+  const zoneTerm = zoneTerminal(s.mass);
+  const recoil = TUNING.wind.gust.selfImpulseAir / s.mass;
+  const horizontal = s.moveSpeed + zoneTerm + recoil;
+  return { horizontal, total: Math.hypot(horizontal, s.maxFallSpeed) };
+}
+
+describe('tunnelling — THE ARBITER re-run at the M4a computed worst case', () => {
+  it('the worst case sits under the speed safety cap, which sits under the 60 m/s envelope', () => {
+    const { total } = worstCaseSpeed();
+    expect(total).toBeLessThan(TUNING.player.maxSpeedSafety);
+    expect(TUNING.player.maxSpeedSafety).toBeLessThan(60);
+  });
+
+  it('at the worst-case velocity (diagonal), lands ON the 0.1-thick platform, never through it', () => {
+    const { horizontal } = worstCaseSpeed();
+    const ctrl = makeController([18.1, 7.0, 0]);
+    ctrl.velocity.set(horizontal, -LIGHT().maxFallSpeed, 0);
+    let minY = Infinity;
+    let landedY = NaN;
+    const s = LIGHT();
+    for (let i = 0; i < 30 && Number.isNaN(landedY); i += 1) {
+      ctrl.update(DT, IDLE, s);
+      minY = Math.min(minY, ctrl.position.y);
+      if (ctrl.grounded) landedY = ctrl.position.y;
+    }
+    expect(landedY).toBeCloseTo(6.05, 2);
+    expect(minY).toBeGreaterThan(5.9);
+  });
+
+  it('raw capsuleSweep holds a DIAGONAL step at the speed safety cap', () => {
+    const step = TUNING.player.maxSpeedSafety * DT; // metres in one fixed step
+    const dir = new THREE.Vector3(0.6, -0.8, 0); // unit, steeply down and sideways
+    const start = new THREE.Vector3(19, 6.6, 0);
+    const result = collider.capsuleSweep(start, start.clone().addScaledVector(dir, step), TUNING.player.radius, TUNING.player.height);
+    expect(result.collided).toBe(true);
+    expect(result.position.y).toBeGreaterThanOrEqual(6.0);
+  });
+});
+
 describe('jump feel (owner correction: full-hold == h, early release strictly less)', () => {
   const apexOf = (holdSteps: number): number => {
     const ctrl = makeController([0, 2, 0]);
@@ -292,6 +343,140 @@ describe('mass (SPEC §2.2 — the one force path)', () => {
     }
     expect(light.velocity.x).toBeGreaterThan(0);
     expect(light.velocity.x / heavy.velocity.x).toBeCloseTo(2, 3);
+  });
+});
+
+describe('external pushes — steering never absorbs them (WO-003 finding)', () => {
+  const ZONE = TUNING.props.windZone;
+  const K = TUNING.player.externalDrag;
+  const pulseSteps = Math.round(ZONE.duration / DT);
+
+  function stepWith(ctrl: CharacterController, s: PlayerStats, intent: MoveIntent, force?: THREE.Vector3): void {
+    if (force) ctrl.applyForce(force);
+    ctrl.update(DT, intent, s);
+  }
+
+  /** z-drift of a capsule standing on the floor through one full zone pulse. */
+  function pulseDrift(s: PlayerStats, intent: MoveIntent = IDLE): number {
+    const ctrl = makeController([0, 0.5, 0]);
+    for (let i = 0; i < 30; i += 1) stepWith(ctrl, s, IDLE);
+    const z0 = ctrl.position.z;
+    for (let i = 0; i < pulseSteps; i += 1) stepWith(ctrl, s, intent, new THREE.Vector3(0, 0, ZONE.defaultForce));
+    return ctrl.position.z - z0;
+  }
+
+  it('a zone pulse drifts a standing player by the analytic force/(mass·drag) amount', () => {
+    const s = LIGHT();
+    const vt = ZONE.defaultForce / (s.mass * K);
+    const expected = vt * (ZONE.duration - (1 - Math.exp(-K * ZONE.duration)) / K);
+    const drift = pulseDrift(s);
+    expect(drift).toBeGreaterThan(1); // the pre-fix controller managed 0.43 m
+    expect(drift).toBeCloseTo(expected, 0);
+    expect(Math.abs(drift - expected) / expected).toBeLessThan(0.05);
+  });
+
+  it('drift scales as 1/mass (SPEC §2.2): the light body goes base/light mass times as far', () => {
+    const light = LIGHT();
+    const base = stats();
+    expect(pulseDrift(light) / pulseDrift(base)).toBeCloseTo(base.mass / light.mass, 3);
+  });
+
+  it('the player can still steer against a push — at most moveSpeed, minus the push', () => {
+    const s = LIGHT();
+    const ctrl = makeController([0, 0.5, 0]);
+    const into: MoveIntent = { x: 0, z: -1, jumpPressed: false, jumpHeld: false };
+    for (let i = 0; i < 300; i += 1) stepWith(ctrl, s, into, new THREE.Vector3(0, 0, ZONE.defaultForce));
+    expect(ctrl.velocity.z).toBeCloseTo(zoneTerminal(s.mass) - s.moveSpeed, 3);
+  });
+
+  it('an impulse is Δv = J/m and fades only by drag — no steering brake in the air', () => {
+    const s = LIGHT();
+    const ctrl = new CharacterController(() => null);
+    ctrl.teleport(new THREE.Vector3(0, 500, 0));
+    const J = TUNING.wind.gust.selfImpulseAir;
+    ctrl.applyImpulse(new THREE.Vector3(J, 0, 0));
+    ctrl.update(DT, IDLE, s);
+    expect(ctrl.velocity.x).toBeCloseTo(J / s.mass, 6);
+    const steps = 30;
+    for (let i = 1; i < steps; i += 1) ctrl.update(DT, IDLE, s);
+    expect(ctrl.velocity.x).toBeCloseTo((J / s.mass) * Math.exp(-K * (steps - 1) * DT), 3);
+  });
+
+  it('an upward impulse on the ground launches — the ground snap cannot eat it', () => {
+    const s = stats();
+    const ctrl = makeController([0, 0.5, 0]);
+    run(ctrl, 30);
+    expect(ctrl.grounded).toBe(true);
+    ctrl.applyImpulse(new THREE.Vector3(0, 5, 0));
+    run(ctrl, 10);
+    expect(ctrl.position.y).toBeGreaterThan(0.3);
+    expect(s.mass).toBe(1);
+  });
+
+  it('a lift weaker than gravity leaves the body on the ground; a stronger one lifts it', () => {
+    const s = stats(); // mass 1
+    const hold = (liftOverG: number): CharacterController => {
+      const ctrl = makeController([0, 0.5, 0]);
+      run(ctrl, 30);
+      for (let i = 0; i < 60; i += 1) stepWith(ctrl, s, IDLE, new THREE.Vector3(0, liftOverG * s.gravity * s.mass, 0));
+      return ctrl;
+    };
+    const weak = hold(0.8);
+    expect(weak.grounded).toBe(true);
+    expect(weak.position.y).toBeCloseTo(0, 3);
+    const strong = hold(1.2);
+    expect(strong.grounded).toBe(false);
+    expect(strong.position.y).toBeGreaterThan(0.5);
+  });
+
+  it('a lift-driven rise never gets lowJumpMult (no jump was pressed)', () => {
+    const s = stats();
+    const ctrl = makeController([0, 0.5, 0]);
+    run(ctrl, 30);
+    const lift = 1.25 * s.gravity * s.mass;
+    const n = 20;
+    for (let i = 0; i < n; i += 1) stepWith(ctrl, s, IDLE, new THREE.Vector3(0, lift, 0));
+    // Plain gravity every step: vy = n·(lift/m − g)·dt exactly.
+    expect(ctrl.velocity.y).toBeCloseTo(n * (lift / s.mass - s.gravity) * DT, 6);
+  });
+
+  it('jump, release early, then enter a lift: the lift ends the variable-jump window', () => {
+    const s = stats();
+    const ctrl = makeController([0, 0.5, 0]);
+    run(ctrl, 30);
+    // Between g and g·lowJumpMult: it can only win if lowJumpMult is OFF.
+    const lift = 0.5 * (1 + s.lowJumpMult) * s.gravity * s.mass;
+    ctrl.update(DT, { x: 0, z: 0, jumpPressed: true, jumpHeld: true }, s);
+    ctrl.update(DT, IDLE, s); // released: lowJumpMult would apply from here
+    stepWith(ctrl, s, IDLE, new THREE.Vector3(0, lift, 0));
+    const vyAfterEntry = ctrl.velocity.y;
+    stepWith(ctrl, s, IDLE, new THREE.Vector3(0, lift, 0));
+    expect(ctrl.velocity.y).toBeGreaterThan(vyAfterEntry);
+  });
+
+  it('no pushes → the external channel stays exactly zero', () => {
+    const ctrl = makeController([0, 2, 0]);
+    run(ctrl, 120, (i) => ({ x: i < 60 ? 1 : 0, z: 0, jumpPressed: i === 30, jumpHeld: i < 40 }));
+    expect(ctrl.externalVelocity.x).toBe(0);
+    expect(ctrl.externalVelocity.z).toBe(0);
+  });
+});
+
+describe('maxSpeedSafety — clamps, counts, and never engages in designed movement', () => {
+  it('a runaway impulse is clamped to the cap and counted', () => {
+    const ctrl = new CharacterController(() => null);
+    ctrl.teleport(new THREE.Vector3(0, 500, 0));
+    ctrl.applyImpulse(new THREE.Vector3(1000, 0, 0));
+    ctrl.update(DT, IDLE, stats());
+    expect(ctrl.velocity.length()).toBeCloseTo(TUNING.player.maxSpeedSafety, 6);
+    expect(ctrl.safetyCapHits).toBe(1);
+  });
+
+  it('running, jumping and falling at max fall speed never touch it', () => {
+    const ctrl = makeController([0, 30, 0]);
+    ctrl.velocity.set(0, -TUNING.player.baseStats.maxFallSpeed, 0);
+    run(ctrl, 400, (i) => ({ x: 1, z: 0.3, jumpPressed: i % 50 === 0, jumpHeld: i % 50 < 20 }));
+    expect(ctrl.safetyCapHits).toBe(0);
   });
 });
 

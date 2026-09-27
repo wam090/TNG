@@ -7,6 +7,7 @@ import { Game } from './core/Game';
 import { installHarness } from './core/Harness';
 import { Input } from './core/Input';
 import { Time } from './core/Time';
+import { TimeScale } from './core/TimeScale';
 import { ELEMENT_IDS } from './elements/ElementModule';
 import { PickupFx } from './elements/PickupFx';
 import { Player } from './player/Player';
@@ -28,7 +29,8 @@ const materials = new Materials();
 const registry = buildElementRegistry();
 const bus = new EventBus();
 const hud = new Hud();
-const pickupFx = new PickupFx();
+const timeScale = new TimeScale();
+const pickupFx = new PickupFx(timeScale);
 const level = new Level(scene, new LevelBuilder(materials), debug, registry, bus);
 level.load(levelJson);
 
@@ -54,6 +56,7 @@ const game = new Game({
   cameraRig,
   scene,
   player,
+  timeScale,
   fade: new FadeOverlay(),
   pickupFx,
   updatables: [

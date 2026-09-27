@@ -4,6 +4,7 @@ import type { Debug } from './Debug';
 import type { InputSource } from './Input';
 import { Rng } from './Rng';
 import type { Time } from './Time';
+import type { TimeScale } from './TimeScale';
 import type { PickupFx } from '../elements/PickupFx';
 import type { Player } from '../player/Player';
 import type { CameraRig } from '../render/CameraRig';
@@ -23,6 +24,7 @@ export interface GameParts {
   cameraRig: CameraRig;
   scene: THREE.Scene;
   player: Player;
+  timeScale: TimeScale;
   fade?: FadeOverlay;
   pickupFx?: PickupFx;
   updatables?: Updatable[];
@@ -36,6 +38,7 @@ export interface GameSnapshot {
   velocity: [number, number, number];
   grounded: boolean;
   substepCapHits: number;
+  safetyCapHits: number;
 }
 
 /**
@@ -112,6 +115,7 @@ export class Game {
       velocity: [p.velocity.x, p.velocity.y, p.velocity.z],
       grounded: p.grounded,
       substepCapHits: this.substepCapHits,
+      safetyCapHits: p.safetyCapHits,
     };
   }
 
@@ -147,15 +151,16 @@ export class Game {
   }
 
   /**
-   * One fixed step. Time dilation is ONLY a scale on the dt handed to sim
-   * consumers — the fixed step and the accumulator never see it, so harness
-   * runs stay deterministic through the whole dilation window. PickupFx and
-   * the input poll tick on RAW step time.
+   * One fixed step. Slow-motion (pickup dilation, hit-stop) is ONLY a scale
+   * on the dt handed to sim consumers — the fixed step and the accumulator
+   * never see it, so harness runs stay deterministic through every window.
+   * TimeScale, PickupFx and the input poll tick on RAW step time.
    */
   private update(dt: number): void {
     const snap = this.inputSource.poll();
+    this.parts.timeScale.update(dt);
     this.parts.pickupFx?.update(dt);
-    const effDt = dt * (this.parts.pickupFx?.timeScale ?? 1);
+    const effDt = dt * this.parts.timeScale.value;
     this.parts.player.update(effDt, dt, snap);
     if (this.parts.updatables) {
       for (const u of this.parts.updatables) u.update(effDt);
@@ -176,6 +181,7 @@ export class Game {
       velocity: p.velocity,
       grounded: p.grounded,
       state: p.state,
+      safetyCapHits: p.safetyCapHits,
     };
   }
 }

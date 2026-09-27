@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { Ability } from '../abilities/Ability';
 import type { PlayerState } from '../player/PlayerStateMachine';
 import type { PlayerStats } from '../player/PlayerStats';
 import type { SocketId } from '../player/Sockets';
@@ -38,10 +39,10 @@ export interface ElementVfx {
   dispose(): void;
 }
 
-/** Shape only at M3 — abilities are implemented at M4 (Ability interface, SPEC §8.6). */
+/** An ability the element grants. `create` builds a fresh instance per loadout change. */
 export interface AbilitySpec {
   id: string;
-  cooldown: number;
+  create: () => Ability;
 }
 
 /** SPEC §8.6. statMods are ABSOLUTE OVERRIDES, not multipliers (DM ruling, see DECISIONS.md). */

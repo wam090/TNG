@@ -35,7 +35,14 @@ export const TUNING = {
       recover: 12,
       minImpactSpeed: 3, // [feel-fix] land-squash fires only for real falls, never micro-recontacts
     },
-    jumpSnapSuppress: 0.1, // [feel-fix] ground-snap can't recapture within this window after a jump
+    jumpSnapSuppress: 0.1, // [feel-fix] ground-snap can't recapture within this window after a jump (also after any upward launch)
+    // [M4a] External pushes (wind zones, Gust recoil) ride their own velocity channel that steering
+    // never brakes; it fades at this rate (1/s). Terminal speed in a zone = force / (mass × drag).
+    // PROVISIONAL — the VP picks from the WO-003 menu: 1.5 (brutal) / 2.5 (recommended first) / 4.0 (gentle).
+    externalDrag: 2.5,
+    // [M4a] Speed safety cap (m/s): clamps |velocity| below the verified 60 m/s collision envelope and is
+    // counted in F1. It must NEVER engage in designed play — any hit is a level or tuning bug.
+    maxSpeedSafety: 55,
     baseStats: {
       mass: 1.0,
       moveSpeed: 6.5,
@@ -67,6 +74,7 @@ export const TUNING = {
     pickupTimeDilation: { scale: 0.25, duration: 0.3 },
     tintLerpTime: 0.35,
     fovPunch: { delta: -4, inTime: 0.1, outTime: 0.4 }, // [M3+ stub feel — VP owns these at M5]
+    hitStopScale: 0, // [M4a] SPEC §5.2 "freeze the sim" — the time scale during hit-stop (MIN-combined with dilation)
   },
 
   wind: {

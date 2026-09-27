@@ -12,6 +12,7 @@ export interface DebugFrameStats {
   velocity: THREE.Vector3;
   grounded: boolean;
   state: string;
+  safetyCapHits: number;
 }
 
 const PANEL_CSS =
@@ -106,12 +107,17 @@ export class Debug {
       `pos          ${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}\n` +
       `vel          h ${hSpeed.toFixed(2)}  y ${v.y.toFixed(2)}\n` +
       `grounded     ${s.grounded ? 'yes' : 'no'}\n` +
-      `state        ${s.state}`;
+      `state        ${s.state}\n` +
+      `speed cap    ${s.safetyCapHits.toFixed(0)} hits (limit ${TUNING.player.maxSpeedSafety.toFixed(0)} m/s)`;
 
-    this.warn.textContent =
+    const substep =
       s.substepCapHits > 0
         ? `\n⚠ SUBSTEP CAP HIT ×${s.substepCapHits.toFixed(0)}${s.drainedThisFrame ? ' — DRAINING NOW' : ''}\n` +
           `  dropped ${ms(s.lastDroppedTime)} ms sim time (slow-mo)`
         : '';
+    // maxSpeedSafety must NEVER engage in designed play — any hit is a level/tuning bug.
+    const speedCap =
+      s.safetyCapHits > 0 ? `\n⚠ SPEED SAFETY CAP HIT ×${s.safetyCapHits.toFixed(0)} — a force exceeded the envelope` : '';
+    this.warn.textContent = substep + speedCap;
   }
 }
