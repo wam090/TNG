@@ -67,7 +67,7 @@ Fixed timestep is `1/60`. `update(dt)` **never** reads `Date.now()` or `performa
 
 ### 4. No `Math.random()` in gameplay. Use `core/Rng.ts` (seeded).
 
-### 5. Props react to EVENTS and TAGS. Never to element names.
+### 5. Props react to EVENTS and quantities only. Never to element names or tags.
 ```ts
 // ❌ FORBIDDEN — this is the bug that forces a rewrite at element #3
 if (player.element === 'wind') this.spin();
@@ -75,7 +75,7 @@ if (player.element === 'wind') this.spin();
 // ✅ CORRECT
 onPush(e: PushEvent) { if (e.force > this.threshold) this.addTorque(e.force); }
 ```
-A windmill does not know what wind is. It knows it got pushed.
+A windmill knows it got pushed. It does not know what pushed it.
 
 ### 6. Adding an element must never require editing `Player.ts`.
 An element is one file: tint + attachments + statMods + abilities + tags + vfx. If a new element forces a change in `Player.ts`, the architecture is wrong. **Stop and fix the architecture, don't work around it.**
