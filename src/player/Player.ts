@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { TUNING } from '../config/tuning';
 import type { InputSnapshot } from '../core/Input';
 import { clamp, DEG2RAD, damp, lerpAngle } from '../core/Math';
-import type { ElementModule } from '../elements/ElementModule';
+import type { ElementModule, Tag } from '../elements/ElementModule';
 import { resolveStats } from '../elements/StatResolver';
 import type { Collider } from '../world/Collider';
 import { buildChassis, CHASSIS_BASE_COLOR, type Chassis } from './ChassisBuilder';
 import { CharacterController } from './CharacterController';
 import type { PlayerStats } from './PlayerStats';
+import { PlayerAbilities, type AbilityHooks } from './PlayerAbilities';
 import { PlayerStateMachine, type PlayerState } from './PlayerStateMachine';
 import { ProcAnim } from './ProcAnim';
 import { SocketRig } from './Sockets';
@@ -36,6 +37,8 @@ export class Player {
 
   private readonly baseStats: PlayerStats = { ...TUNING.player.baseStats };
   private readonly loadout: ElementModule[] = [];
+  private tags: Tag[] = [];
+  private readonly abilities: PlayerAbilities;
   private readonly socketRig: SocketRig;
   private readonly controller: CharacterController;
   private readonly chassis: Chassis;
@@ -64,6 +67,7 @@ export class Player {
     private readonly getCollider: () => Collider | null,
   ) {
     this.controller = new CharacterController(getCollider);
+    this.abilities = new PlayerAbilities(this.controller);
     this.chassis = buildChassis();
     this.socketRig = new SocketRig(this.chassis.sockets);
     scene.add(this.chassis.root);
@@ -88,6 +92,10 @@ export class Player {
     this.resetInterpolation();
   }
 
+  setAbilityHooks(hooks: AbilityHooks): void {
+    this.abilities.setHooks(hooks);
+  }
+
   /** Move only the respawn point (level hot-reload keeps the player in place). */
   setSpawn(feet: THREE.Vector3): void {
     this.spawn.copy(feet);
@@ -105,7 +113,7 @@ export class Player {
     }
     this.loadout.push(module);
     this.socketRig.attach(module.id, module.attachments);
-    this.stats = resolveStats(this.baseStats, this.loadout);
+    this.loadoutChanged();
     this.startTint(module.bodyTint);
   }
 
@@ -114,8 +122,15 @@ export class Player {
     if (this.loadout.length === 0) return;
     this.socketRig.detachAll();
     this.loadout.length = 0;
-    this.stats = resolveStats(this.baseStats, this.loadout);
+    this.loadoutChanged();
     this.startTint(CHASSIS_BASE_COLOR);
+  }
+
+  /** Stats, tags and abilities are all pure functions of the loadout DATA. */
+  private loadoutChanged(): void {
+    this.stats = resolveStats(this.baseStats, this.loadout);
+    this.tags = this.loadout.flatMap((m) => m.tags);
+    this.abilities.setAbilities(this.loadout.flatMap((m) => m.abilities));
   }
 
   get elementCount(): number {
@@ -143,12 +158,14 @@ export class Player {
     this.prevYaw = this.currYaw;
 
     const move = inputToWorld(snap.move.x, snap.move.y);
+    // Abilities run first so their impulses and stat overrides land this step.
+    const stepStats = this.abilities.step(dt, snap, move, this.currYaw, this.stats, this.tags);
     const events = this.controller.update(dt, {
       x: move.x,
       z: move.z,
       jumpPressed: snap.jumpPressed,
       jumpHeld: snap.jumpHeld,
-    }, this.stats);
+    }, stepStats);
 
     // Face the velocity direction (visual only).
     const speed = this.controller.horizontalSpeed;
@@ -163,6 +180,7 @@ export class Player {
       horizontalSpeed: speed,
       jumped: events.jumped,
       landed: events.landed,
+      ability: this.abilities.activeState,
     });
     // Land-squash only for real falls: micro-recontacts (slope flicker, crest
     // crossings) must never slam the scale mid-run. Impact speed is last
@@ -243,6 +261,11 @@ export class Player {
 
   get safetyCapHits(): number {
     return this.controller.safetyCapHits;
+  }
+
+  /** Props see the player only through this: position, and the mass path. */
+  applyForce(force: THREE.Vector3): void {
+    this.controller.applyForce(force);
   }
 
   get renderPosition(): THREE.Vector3 {

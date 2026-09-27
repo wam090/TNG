@@ -1,15 +1,7 @@
 import { ELEMENT_IDS, isElementId, type ElementId } from '../elements/ElementModule';
 import { Materials, type MaterialName } from '../render/Materials';
-
-/**
- * Thrown on malformed level JSON. The message always names the offending
- * block and field — this JSON is hand-authored, so the error IS the UX.
- */
-export class LevelParseError extends Error {
-  override name = 'LevelParseError';
-}
-
-export type Vec3Tuple = [number, number, number];
+import { parseProp, type PropData } from './PropSchema';
+import { asNumber, asRecord, asString, asVec3, fail, type Vec3Tuple } from './SchemaUtil';
 
 export interface LevelFog {
   color: string;
@@ -46,6 +38,7 @@ export interface LevelData {
   env: LevelEnv;
   blocks: LevelBlock[];
   tokens: LevelTokenData[];
+  props: PropData[];
 }
 
 // Defaults when "env" is omitted — matches SPEC §7's sample environment.
@@ -56,35 +49,6 @@ const DEFAULT_ENV: LevelEnv = {
   sunIntensity: 1.0,
   ambient: 0.55,
 };
-
-function fail(context: string, problem: string): never {
-  throw new LevelParseError(`${context}: ${problem}`);
-}
-
-function asRecord(raw: unknown, context: string): Record<string, unknown> {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    fail(context, 'expected a JSON object');
-  }
-  return raw as Record<string, unknown>;
-}
-
-function asString(v: unknown, context: string, field: string): string {
-  if (typeof v !== 'string' || v.length === 0) fail(context, `"${field}" must be a non-empty string`);
-  return v;
-}
-
-function asNumber(v: unknown, context: string, field: string): number {
-  if (typeof v !== 'number' || !Number.isFinite(v)) fail(context, `"${field}" must be a finite number`);
-  return v;
-}
-
-function asVec3(v: unknown, context: string, field: string): Vec3Tuple {
-  if (!Array.isArray(v) || v.length !== 3 || !v.every((n) => typeof n === 'number' && Number.isFinite(n))) {
-    const got = Array.isArray(v) ? `an array of ${v.length.toFixed(0)}` : typeof v;
-    fail(context, `"${field}" must be an array of 3 numbers [x, y, z], got ${got}`);
-  }
-  return [v[0], v[1], v[2]] as Vec3Tuple;
-}
 
 function parseEnv(raw: unknown, context: string): LevelEnv {
   if (raw === undefined) return DEFAULT_ENV;
@@ -146,9 +110,9 @@ function parseToken(raw: unknown, index: number): LevelTokenData {
 }
 
 /**
- * Validate untrusted level JSON into LevelData. Unknown top-level keys
- * (props, shards, goal…) are deliberately ignored so M4 content can
- * live in the file before the systems that consume it exist.
+ * Validate untrusted level JSON into LevelData. Unknown top-level keys are
+ * deliberately ignored so future content can sit in the file before the
+ * systems that consume it exist.
  */
 export function parseLevel(raw: unknown): LevelData {
   const o = asRecord(raw, 'level');
@@ -162,6 +126,11 @@ export function parseLevel(raw: unknown): LevelData {
     if (!Array.isArray(o.tokens)) fail(context, '"tokens" must be an array');
     tokens = o.tokens.map((t: unknown, i: number) => parseToken(t, i));
   }
+  let props: PropData[] = [];
+  if (o.props !== undefined) {
+    if (!Array.isArray(o.props)) fail(context, '"props" must be an array');
+    props = o.props.map((p: unknown, i: number) => parseProp(p, i));
+  }
   return {
     id,
     name: o.name === undefined ? id : asString(o.name, context, 'name'),
@@ -169,5 +138,6 @@ export function parseLevel(raw: unknown): LevelData {
     env: parseEnv(o.env, context),
     blocks: o.blocks.map((b: unknown, i: number) => parseBlock(b, i)),
     tokens,
+    props,
   };
 }

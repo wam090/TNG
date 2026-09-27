@@ -1,5 +1,6 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import type { PushEvent } from '../../core/Events';
+import type { Vec3Tuple } from '../SchemaUtil';
 import type { Signals } from '../Signals';
 
 /** All a prop may know about the player: where it is, and a way to push it. */
@@ -35,4 +36,22 @@ export interface Prop {
   /** F3 gizmo: volumes, thresholds, state. Created once, shown/hidden by Level. */
   readonly gizmo: THREE.Object3D;
   dispose(): void;
+}
+
+/**
+ * A prop's collision box in WORLD space, in the collider's format (position
+ * only, non-indexed) so Level can merge it with the static level geometry.
+ * `center` is the box centre in the prop's local frame.
+ */
+export function solidBox(size: Vec3Tuple, center: Vec3Tuple, local: THREE.Matrix4): THREE.BufferGeometry {
+  const box = new THREE.BoxGeometry(...size);
+  box.translate(...center);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', box.getAttribute('position').clone());
+  if (box.index) geometry.setIndex(box.index.clone());
+  box.dispose();
+  geometry.applyMatrix4(local);
+  const flat = geometry.toNonIndexed();
+  geometry.dispose();
+  return flat;
 }

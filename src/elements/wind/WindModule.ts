@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { TUNING } from '../../config/tuning';
 import type { AttachmentSpec, ElementModule, ElementVfx } from '../ElementModule';
+import { GlideAbility } from './abilities/GlideAbility';
+import { GustAbility } from './abilities/GustAbility';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TEST FIXTURE — this ring exists ONLY to prove the socket pipeline attaches,
@@ -36,7 +38,7 @@ const noopVfx: ElementVfx = {
   dispose: () => undefined,
 };
 
-/** Wind, M3 stub: tint + stat overrides + tags only. Abilities are M4, visuals are M5. */
+/** Wind: tint + stat overrides + tags + Gust/Glide (M4a). Visuals are M5. */
 export const windModule: ElementModule = {
   id: 'wind',
   displayName: 'Wind Core',
@@ -44,6 +46,9 @@ export const windModule: ElementModule = {
   tags: ['light', 'air'],
   statMods: { ...TUNING.wind.statMods },
   attachments: [testFixtureRing],
-  abilities: [],
+  abilities: [
+    { id: 'gust', create: () => new GustAbility() },
+    { id: 'glide', create: () => new GlideAbility() },
+  ],
   vfx: () => noopVfx,
 };

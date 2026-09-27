@@ -1,0 +1,15 @@
+{
+  "id": "sandbox",
+  "name": "DISPOSABLE M4a prop sandbox — not a level, never shipped, delete at M4b",
+  "version": 1,
+  "spawn": [0, 1, 0],
+  "env": {
+    "sky": "#DCE7EE",
+    "fog": { "color": "#DCE7EE", "near": 40, "far": 110 },
+    "sunDir": [-0.4, -1.0, -0.3],
+    "ambient": 0.55
+  },
+  "tokens": [{ "id": "core_sandbox", "element": "wind", "pos": [0, 1.2, 0] }],
+  "blocks": [{ "type": "box", "pos": [0, -0.5, 0], "size": [48, 1, 48], "mat": "stone" }],
+  "props": [{ "type": "windmill", "id": "wm_a", "pos": [0, 0, -5], "rotY": 0, "emits": "sig_gate_a", "threshold": 12 }]
+}

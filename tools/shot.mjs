@@ -1,5 +1,5 @@
 // Deterministic screenshot harness.
-//   npm run shot -- --script=idle --frames=0,60,120,240 [--debug]
+//   npm run shot -- --script=idle --frames=0,60,120,240 [--level=sandbox] [--debug]
 // Boots a vite dev server, opens the game in headless Chromium with
 // ?harness=1, drives it via window.__stillmote.step() (exact fixed sim
 // steps — no rAF, no wall clock), and writes shots/<script>_<frame>.png.
@@ -15,14 +15,15 @@ const DEFAULT_FRAMES = '0,60,120,240';
 const SHOTS_DIR = 'shots';
 
 function parseArgs(argv) {
-  const args = { script: null, frames: DEFAULT_FRAMES, debug: false };
+  const args = { script: null, frames: DEFAULT_FRAMES, debug: false, level: null };
   for (const a of argv) {
     if (a.startsWith('--script=')) args.script = a.slice('--script='.length);
+    else if (a.startsWith('--level=')) args.level = a.slice('--level='.length);
     else if (a.startsWith('--frames=')) args.frames = a.slice('--frames='.length);
     else if (a === '--debug') args.debug = true;
     else {
       console.error(`unknown argument: ${a}`);
-      console.error('usage: npm run shot -- --script=<name> [--frames=0,60,120,240] [--debug]');
+      console.error('usage: npm run shot -- --script=<name> [--frames=0,60,120,240] [--level=<name>] [--debug]');
       process.exit(2);
     }
   }
@@ -35,7 +36,7 @@ function parseArgs(argv) {
     console.error(`--frames must be non-negative integers, got: ${args.frames}`);
     process.exit(2);
   }
-  return { script: args.script, frames, debug: args.debug };
+  return { script: args.script, frames, debug: args.debug, level: args.level };
 }
 
 /** Container fallback: use the preinstalled browser when playwright's own isn't downloaded. */
@@ -48,7 +49,7 @@ function chromiumExecutable() {
   return undefined; // let playwright raise its own descriptive install error
 }
 
-const { script, frames, debug } = parseArgs(process.argv.slice(2));
+const { script, frames, debug, level } = parseArgs(process.argv.slice(2));
 const scriptPath = path.join('scripts', `${script}.json`);
 if (!fs.existsSync(scriptPath)) {
   console.error(`no such input script: ${scriptPath}`);
@@ -84,7 +85,8 @@ page.on('console', (m) => {
   if (m.type() === 'error') pageErrors.push(`console.error: ${m.text()}`);
 });
 
-await page.goto(`${url}?harness=1${debug ? '&debug=1' : ''}`, { waitUntil: 'load' });
+const levelQuery = level ? `&level=${encodeURIComponent(level)}` : '';
+await page.goto(`${url}?harness=1${levelQuery}${debug ? '&debug=1' : ''}`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__stillmote !== undefined);
 await page.evaluate(
   ({ seed, inputScript }) => {

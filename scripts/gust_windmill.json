@@ -1,0 +1,8 @@
+{
+  "name": "gust_windmill",
+  "steps": 240,
+  "segments": [
+    { "from": 30, "until": 40, "hold": ["up", "right"] },
+    { "from": 35, "until": 37, "hold": ["action"] }
+  ]
+}

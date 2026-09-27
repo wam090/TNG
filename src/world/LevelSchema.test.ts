@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LevelParseError, parseLevel } from './LevelSchema';
+import { parseLevel } from './LevelSchema';
+import { LevelParseError } from './SchemaUtil';
 
 const box = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
   type: 'box',
@@ -27,8 +28,23 @@ describe('parseLevel', () => {
     expect(data.env.sunIntensity).toBe(1.0);
   });
 
-  it('ignores unknown top-level keys (future props/shards/goal)', () => {
-    expect(() => parseLevel(level({ props: [{}], shards: [{}], goal: {} }))).not.toThrow();
+  it('ignores unknown top-level keys (content ahead of its systems)', () => {
+    expect(() => parseLevel(level({ futureThing: [{}], anotherOne: {} }))).not.toThrow();
+  });
+
+  it('validates props — a malformed prop names its index, id and field', () => {
+    expect(() => parseLevel(level({ props: [{}] }))).toThrow(/props\[0\]: "id" must be a non-empty string/);
+    expect(() => parseLevel(level({ props: [{ id: 'x', type: 'teleporter', pos: [0, 0, 0] }] }))).toThrow(
+      /props\[0\] \("x"\): unknown type "teleporter"/,
+    );
+    expect(() => parseLevel(level({ props: [{ id: 'wm', type: 'windmill', pos: [0, 0] }] }))).toThrow(
+      /props\[0\] \("wm", windmill\): "pos" must be an array of 3 numbers/,
+    );
+  });
+
+  it('prop defaults come from tuning (SPEC §6.4 thresholds)', () => {
+    const data = parseLevel(level({ props: [{ id: 'wm', type: 'windmill', pos: [1, 0, 2] }] }));
+    expect(data.props[0]).toMatchObject({ type: 'windmill', rotY: 0, emits: null, threshold: 12 });
   });
 
   it('parses tokens and defaults to none', () => {

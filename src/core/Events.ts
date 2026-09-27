@@ -29,6 +29,9 @@ export interface ImpactEvent {
 /** All game events, typed. */
 export interface GameEvents {
   tokenPickup: { element: ElementId; tokenId: string };
+  checkpoint: { id: string; feet: THREE.Vector3 };
+  shardCollected: { id: string };
+  levelComplete: { levelId: string };
 }
 
 type Handler<K extends keyof GameEvents> = (payload: GameEvents[K]) => void;

@@ -1,6 +1,6 @@
 import { TUNING } from '../config/tuning';
 
-// 'glide' and 'gust' are reserved slots — they become reachable at M4.
+// 'glide' and 'gust' are driven by whichever active ability reports them.
 export type PlayerState = 'idle' | 'run' | 'jump' | 'fall' | 'land' | 'glide' | 'gust';
 
 export interface StateContext {
@@ -9,6 +9,8 @@ export interface StateContext {
   horizontalSpeed: number;
   jumped: boolean;
   landed: boolean;
+  /** State reported by an active ability (glide/gust), or null. */
+  ability: PlayerState | null;
 }
 
 export class PlayerStateMachine {
@@ -27,6 +29,10 @@ export class PlayerStateMachine {
     if (ctx.landed) {
       this.state = 'land';
       this.landTimer = TUNING.player.anim.landDuration;
+      return this.state;
+    }
+    if (ctx.ability) {
+      this.state = ctx.ability;
       return this.state;
     }
 
@@ -48,8 +54,9 @@ export class PlayerStateMachine {
         break;
       case 'glide':
       case 'gust':
-        // Unreachable until M4 wires the wind abilities in.
-        this.state = 'fall';
+        // The ability just ended: resume whatever the body is doing.
+        if (ctx.grounded) this.state = this.groundedState(ctx);
+        else this.state = ctx.verticalVelocity > 0 ? 'jump' : 'fall';
         break;
     }
     return this.state;

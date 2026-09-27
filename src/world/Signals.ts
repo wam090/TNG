@@ -24,4 +24,9 @@ export class Signals {
   reset(): void {
     this.on.clear();
   }
+
+  /** Every signal that is on, sorted (harness state, F1). */
+  list(): string[] {
+    return [...this.on].sort();
+  }
 }

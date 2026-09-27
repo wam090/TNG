@@ -113,7 +113,12 @@ export const TUNING = {
   props: {
     windZone: { defaultForce: 9.5, period: 4.0, duration: 1.6, telegraph: 0.6 },
     updraft: { velocity: 9.0, maxHeight: 12 },
-    windmill: { torqueDecay: 0.85, activateAt: 6.0 }, // rad/s to fire signal
+    windmill: {
+      torqueDecay: 0.85, // fraction of spin kept per SECOND (frame-rate independent reading)
+      activateAt: 6.0, // rad/s to fire signal
+      threshold: 12, // [M4a] default push force needed (SPEC §6.4); JSON may override per windmill
+      spinPerForce: 0.5, // [M4a PROVISIONAL] rad/s gained per unit of push force: one Gust (18) → 9 rad/s
+    },
     token: {
       spinRate: 1.4, // rad/s
       bobAmp: 0.12,
