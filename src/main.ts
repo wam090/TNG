@@ -46,6 +46,9 @@ const playerView = {
   get feet(): THREE.Vector3 {
     return player.position;
   },
+  get velocity(): THREE.Vector3 {
+    return player.velocity;
+  },
   applyForce: (f: THREE.Vector3): void => {
     player.applyForce(f);
   },

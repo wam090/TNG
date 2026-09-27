@@ -1,0 +1,5 @@
+{
+  "name": "windzone_drift",
+  "steps": 300,
+  "segments": [{ "from": 75, "until": 154, "hold": ["up", "left"] }]
+}

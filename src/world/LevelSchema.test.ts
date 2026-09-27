@@ -42,6 +42,30 @@ describe('parseLevel', () => {
     );
   });
 
+  it('shards[] and goal{} at the top level (SPEC §7) become props', () => {
+    const data = parseLevel(level({ shards: [{ id: 'sh_1', pos: [1, 2, 3] }], goal: { pos: [4, 0, 5] } }));
+    expect(data.props).toEqual([
+      { type: 'shard', id: 'sh_1', pos: [1, 2, 3] },
+      { type: 'goal', id: 'goal', pos: [4, 0, 5], radius: 1.5 },
+    ]);
+  });
+
+  it('prop validation names the problem: gate wiring, zone timing, zero direction', () => {
+    const p = (prop: Record<string, unknown>): unknown => level({ props: [{ id: 'p', pos: [0, 0, 0], ...prop }] });
+    expect(() => parseLevel(p({ type: 'gate' }))).toThrow(/"listensTo" must be an array of signal ids/);
+    expect(() => parseLevel(p({ type: 'windZone', size: [1, 1, 1], dir: [0, 0, 0] }))).toThrow(/"dir" must not be \[0, 0, 0\]/);
+    expect(() => parseLevel(p({ type: 'windZone', size: [1, 1, 1], dir: [1, 0, 0], period: 2, duration: 1.6 }))).toThrow(
+      /must fit inside "period"/,
+    );
+    expect(() => parseLevel(p({ type: 'windZone', dir: [1, 0, 0] }))).toThrow(/"size" is required/);
+    expect(() => parseLevel(p({ type: 'updraft', requireAll: 'yes' }))).toThrow(/"requireAll" must be true or false/);
+  });
+
+  it('updraft defaults: SPEC §7 column, provisional force, SPEC velocity as the ceiling', () => {
+    const data = parseLevel(level({ props: [{ id: 'u', type: 'updraft', pos: [0, 0, 0] }] }));
+    expect(data.props[0]).toMatchObject({ size: [3, 12, 3], force: 20, velocity: 9, listensTo: [], requireAll: true });
+  });
+
   it('prop defaults come from tuning (SPEC §6.4 thresholds)', () => {
     const data = parseLevel(level({ props: [{ id: 'wm', type: 'windmill', pos: [1, 0, 2] }] }));
     expect(data.props[0]).toMatchObject({ type: 'windmill', rotY: 0, emits: null, threshold: 12 });

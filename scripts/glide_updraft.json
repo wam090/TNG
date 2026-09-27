@@ -1,0 +1,10 @@
+{
+  "name": "glide_updraft",
+  "steps": 400,
+  "segments": [
+    { "from": 30, "until": 88, "hold": ["down", "right"] },
+    { "from": 55, "until": 57, "hold": ["action"] },
+    { "from": 215, "until": 336, "hold": ["up", "right"] },
+    { "from": 230, "until": 330, "hold": ["jump"] }
+  ]
+}

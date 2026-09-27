@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TUNING } from '../../config/tuning';
 import type { PushEvent } from '../../core/Events';
 import type { Vec3Tuple } from '../SchemaUtil';
 import type { Signals } from '../Signals';
@@ -6,8 +7,14 @@ import type { Signals } from '../Signals';
 /** All a prop may know about the player: where it is, and a way to push it. */
 export interface PropPlayerView {
   readonly feet: THREE.Vector3;
+  readonly velocity: THREE.Vector3;
   /** The mass path — the prop never learns the mass; the controller divides by it. */
   applyForce(force: THREE.Vector3): void;
+}
+
+/** Overlap probe point: the capsule's mid-height, so ground-level volumes never flicker. */
+export function bodyCentre(player: PropPlayerView): THREE.Vector3 {
+  return player.feet.clone().setY(player.feet.y + TUNING.player.height / 2);
 }
 
 /** What props can reach each step. No element, no tag, no loadout — ever. */

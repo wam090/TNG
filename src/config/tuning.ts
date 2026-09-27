@@ -112,7 +112,21 @@ export const TUNING = {
 
   props: {
     windZone: { defaultForce: 9.5, period: 4.0, duration: 1.6, telegraph: 0.6 },
-    updraft: { velocity: 9.0, maxHeight: 12 },
+    updraft: {
+      velocity: 9.0, // rise-speed ceiling (m/s): the lift stops pushing once vy reaches it
+      maxHeight: 12, // default column height when JSON omits "size"
+      width: 3, // [M4a] default column footprint (SPEC §7 sample size [3, 12, 3])
+      // [M4a PROVISIONAL] upward FORCE (DM ruling: mass-sensitive). Must sit inside
+      // (lightMass·g·lightFallMult, baseMass·g) = (16.56, 24) so the light body rises even
+      // when it drops in, and the base body cannot rise at all. Candidates 18 / 20 / 22.
+      force: 20,
+    },
+    gate: { openTime: 1.2, size: [3, 3, 0.4] }, // [M4a PROVISIONAL] sink-open time (s); default slab
+    debris: { threshold: 8 }, // [M4a] SPEC §6.4 default push force; JSON may override
+    fan: { threshold: 10, reach: 14, width: 4, height: 4, force: 9.5, bladeSpin: 14 }, // [M4a] threshold per SPEC; current PROVISIONAL; bladeSpin rad/s (visual)
+    checkpoint: { radius: 1.5 }, // [M4a] trigger radius around the respawn point
+    shard: { radius: 0.8, spinRate: 1.8, visualRadius: 0.22 }, // [M4a] pickup radius; visuals
+    goal: { radius: 1.5, height: 6 }, // [M4a] default radius (SPEC §7 sample) and light-pillar height
     windmill: {
       torqueDecay: 0.85, // fraction of spin kept per SECOND (frame-rate independent reading)
       activateAt: 6.0, // rad/s to fire signal

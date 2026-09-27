@@ -10,6 +10,27 @@
     "ambient": 0.55
   },
   "tokens": [{ "id": "core_sandbox", "element": "wind", "pos": [0, 1.2, 0] }],
-  "blocks": [{ "type": "box", "pos": [0, -0.5, 0], "size": [48, 1, 48], "mat": "stone" }],
-  "props": [{ "type": "windmill", "id": "wm_a", "pos": [0, 0, -5], "rotY": 0, "emits": "sig_gate_a", "threshold": 12 }]
+  "blocks": [
+    { "type": "box", "pos": [0, -0.5, 0], "size": [48, 1, 48], "mat": "stone" },
+    { "type": "box", "pos": [1.25, 1.5, -9], "size": [2.5, 3, 0.6], "mat": "stone" },
+    { "type": "box", "pos": [6.75, 1.5, -9], "size": [2.5, 3, 0.6], "mat": "stone" },
+    { "type": "box", "pos": [7, 3, -11], "size": [5, 6, 8], "mat": "pillar" }
+  ],
+  "props": [
+    { "type": "windmill", "id": "wm_a", "pos": [0, 0, -5], "rotY": 0, "emits": "sig_gate_a", "threshold": 12 },
+    { "type": "gate", "id": "gate_a", "pos": [4, 0, -9], "rotY": 0, "listensTo": ["sig_gate_a"], "requireAll": true },
+
+    { "type": "debris", "id": "deb_1", "pos": [7, 0, 0], "emits": "sig_vent_1", "threshold": 8 },
+    { "type": "updraft", "id": "up_1", "pos": [7, 0, 0], "size": [3, 12, 3], "listensTo": ["sig_vent_1"], "velocity": 9 },
+
+    { "type": "windZone", "id": "wz_1", "pos": [-9, 0, 0], "size": [4, 4, 12], "dir": [0, 0, 1],
+      "force": 9.5, "period": 4.0, "duration": 1.6, "telegraph": 0.6 },
+
+    { "type": "fan", "id": "fan_1", "pos": [0, 0, 5], "rotY": 90, "threshold": 10 },
+
+    { "type": "checkpoint", "id": "cp_1", "pos": [-4, 0, -4] },
+    { "type": "checkpoint", "id": "cp_2", "pos": [7, 6, -11] }
+  ],
+  "shards": [{ "id": "sh_1", "pos": [7, 6.9, -13] }],
+  "goal": { "pos": [-10, 0, -10], "radius": 1.5 }
 }

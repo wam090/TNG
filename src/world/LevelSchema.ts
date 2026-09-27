@@ -1,6 +1,6 @@
 import { ELEMENT_IDS, isElementId, type ElementId } from '../elements/ElementModule';
 import { Materials, type MaterialName } from '../render/Materials';
-import { parseProp, type PropData } from './PropSchema';
+import { parseGoal, parseProp, parseShard, type PropData } from './PropSchema';
 import { asNumber, asRecord, asString, asVec3, fail, type Vec3Tuple } from './SchemaUtil';
 
 export interface LevelFog {
@@ -131,6 +131,11 @@ export function parseLevel(raw: unknown): LevelData {
     if (!Array.isArray(o.props)) fail(context, '"props" must be an array');
     props = o.props.map((p: unknown, i: number) => parseProp(p, i));
   }
+  if (o.shards !== undefined) {
+    if (!Array.isArray(o.shards)) fail(context, '"shards" must be an array');
+    props = props.concat(o.shards.map((sh: unknown, i: number) => parseShard(sh, i)));
+  }
+  if (o.goal !== undefined) props.push(parseGoal(o.goal));
   return {
     id,
     name: o.name === undefined ? id : asString(o.name, context, 'name'),
