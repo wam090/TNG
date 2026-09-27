@@ -94,7 +94,7 @@ An element is **not** a colour. It is a bundle of:
 |---|---|---|
 | **Passive stats** | Rewrites your movement physics silently. Player *feels* it before pressing any new button. | `mass 1.0 → 0.6`, higher jump, slower fall, more air control |
 | **Active verb** | ONE new button. | **Gust** — a directed cone of air that pushes the world (and recoils you in mid-air) |
-| **Hold verb** | A modifier on an existing button. | **Glide** — hold Jump while falling → slow descent, rotor deploys at the crown socket |
+| **Hold verb** | A modifier on an existing button. | **Glide** — press Jump while falling, hold to keep gliding → slow descent, rotor deploys at the crown socket *(M4a: a NEW press is required, so the jump's own held button never auto-glides at the apex)* |
 | **Tags** | What the world sees you as. | `light`, `air` |
 | **Visual identity** | Body tint + meshes bolted to sockets + VFX. | Cool grey `#A9B4BC`, 3 orbiting streaks, mote field, crown rotor |
 | **Liability** | The cost. | Wind zones blow you off bridges. Can't hold heavy pressure plates. |
@@ -425,9 +425,9 @@ Plus: **one hidden Shard**, off the critical path, reachable only by gusting *do
 | `Windmill` | `PushEvent` (force > 12) | `signal` on full rotation | Accumulates torque, decays. Visual spin speed = torque. |
 | `Gate` | `signal` | — | Listens to signal id(s). `requireAll: true`. Grinds open. |
 | `Debris` | `PushEvent` (force > 8) | `signal` on destroy | Blocks the vent. Despawns with a puff. |
-| `Updraft` | `signal` (enable) | — | Trigger volume, applies `+9 m/s` vertical velocity, capped at height 12. |
-| `Fan` | `PushEvent` | — | Toggles on; creates a directional `WindZone` in front of it. |
-| `WindZone` | — | — | Trigger volume, applies `force / mass` horizontally. Pulses on a timer. |
+| `Updraft` | `signal` (enable) | — | Trigger volume, applies an upward **force** (`force / mass`, WO-003 DM ruling): a light body rises, the base body does not. Rise speed capped at `9 m/s`, column height 12. |
+| `Fan` | `PushEvent` (force > 10) | — | Switches on (latched); drives a continuous `WindZone` out of its face. |
+| `WindZone` | — | — | Trigger volume, applies `force / mass` horizontally. Pulses on a timer: calm → telegraph → gust (the gust is the last `duration` of each `period`). |
 | `Checkpoint` | player overlap | — | Sets respawn point. |
 | `Shard` | player overlap | — | Collectible. Saves to profile. |
 | `Goal` | player overlap | — | Ends level. |

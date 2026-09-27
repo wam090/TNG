@@ -8,6 +8,7 @@ import type { Materials } from '../render/Materials';
 import { Collider } from './Collider';
 import type { BuiltLevel, LevelBuilder } from './LevelBuilder';
 import { parseLevel } from './LevelSchema';
+import { Checkpoint } from './props/Checkpoint';
 import type { Prop, PropContext, PropPlayerView } from './props/Prop';
 import { createProp } from './props/PropFactory';
 import { Token } from './props/Token';
@@ -178,6 +179,11 @@ export class Level {
     this.tokens = [];
     this.props = [];
     this.gizmos.clear();
+  }
+
+  /** Respawn points of every checkpoint, in JSON order (F5 cycles through these). */
+  get checkpoints(): THREE.Vector3[] {
+    return this.props.filter((p): p is Checkpoint => p instanceof Checkpoint).map((c) => c.respawn);
   }
 
   get spawn(): THREE.Vector3 | null {

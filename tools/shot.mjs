@@ -1,5 +1,5 @@
 // Deterministic screenshot harness.
-//   npm run shot -- --script=idle --frames=0,60,120,240 [--level=sandbox] [--debug]
+//   npm run shot -- --script=idle --frames=0,60,120,240 [--level=sandbox] [--keys=F3,F2] [--debug]
 // Boots a vite dev server, opens the game in headless Chromium with
 // ?harness=1, drives it via window.__stillmote.step() (exact fixed sim
 // steps — no rAF, no wall clock), and writes shots/<script>_<frame>.png.
@@ -15,15 +15,16 @@ const DEFAULT_FRAMES = '0,60,120,240';
 const SHOTS_DIR = 'shots';
 
 function parseArgs(argv) {
-  const args = { script: null, frames: DEFAULT_FRAMES, debug: false, level: null };
+  const args = { script: null, frames: DEFAULT_FRAMES, debug: false, level: null, keys: [] };
   for (const a of argv) {
     if (a.startsWith('--script=')) args.script = a.slice('--script='.length);
     else if (a.startsWith('--level=')) args.level = a.slice('--level='.length);
+    else if (a.startsWith('--keys=')) args.keys = a.slice('--keys='.length).split(',').filter(Boolean);
     else if (a.startsWith('--frames=')) args.frames = a.slice('--frames='.length);
     else if (a === '--debug') args.debug = true;
     else {
       console.error(`unknown argument: ${a}`);
-      console.error('usage: npm run shot -- --script=<name> [--frames=0,60,120,240] [--level=<name>] [--debug]');
+      console.error('usage: npm run shot -- --script=<name> [--frames=0,60,120,240] [--level=<name>] [--keys=F3] [--debug]');
       process.exit(2);
     }
   }
@@ -36,7 +37,7 @@ function parseArgs(argv) {
     console.error(`--frames must be non-negative integers, got: ${args.frames}`);
     process.exit(2);
   }
-  return { script: args.script, frames, debug: args.debug, level: args.level };
+  return { script: args.script, frames, debug: args.debug, level: args.level, keys: args.keys };
 }
 
 /** Container fallback: use the preinstalled browser when playwright's own isn't downloaded. */
@@ -49,7 +50,7 @@ function chromiumExecutable() {
   return undefined; // let playwright raise its own descriptive install error
 }
 
-const { script, frames, debug, level } = parseArgs(process.argv.slice(2));
+const { script, frames, debug, level, keys } = parseArgs(process.argv.slice(2));
 const scriptPath = path.join('scripts', `${script}.json`);
 if (!fs.existsSync(scriptPath)) {
   console.error(`no such input script: ${scriptPath}`);
@@ -88,6 +89,8 @@ page.on('console', (m) => {
 const levelQuery = level ? `&level=${encodeURIComponent(level)}` : '';
 await page.goto(`${url}?harness=1${levelQuery}${debug ? '&debug=1' : ''}`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__stillmote !== undefined);
+// Debug keys (F3 gizmos, F2 colliders…) for eyeballing — never used for goldens.
+for (const key of keys) await page.keyboard.press(key);
 await page.evaluate(
   ({ seed, inputScript }) => {
     window.__stillmote.seed(seed);
@@ -103,7 +106,8 @@ for (const frame of frames) {
     window.__stillmote.step(n);
   }, frame - current);
   current = frame;
-  const file = path.join(SHOTS_DIR, `${script}_${frame}.png`);
+  const suffix = keys.length > 0 ? `_${keys.join('')}` : '';
+  const file = path.join(SHOTS_DIR, `${script}${suffix}_${frame}.png`);
   await page.screenshot({ path: file });
   written.push(file);
 }

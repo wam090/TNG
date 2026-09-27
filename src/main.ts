@@ -118,6 +118,17 @@ debug.registerToggle('F4', (on) => {
   }
 });
 
+// F5 (CLAUDE.md rule 10): each press teleports to the NEXT checkpoint (JSON order,
+// wrapping) and makes it the respawn point.
+let checkpointIndex = -1;
+debug.registerPress('F5', () => {
+  const points = level.checkpoints;
+  if (points.length === 0) return;
+  checkpointIndex = (checkpointIndex + 1) % points.length;
+  const target = points[checkpointIndex];
+  if (target) player.spawnAt(target);
+});
+
 if (import.meta.env.DEV) {
   installCoordPicker(renderer.domElement, cameraRig.camera, () => level.collider);
 }

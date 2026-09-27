@@ -28,6 +28,7 @@ export class Debug {
   private readonly stats: HTMLDivElement;
   private readonly warn: HTMLDivElement;
   private readonly toggles = new Map<string, { on: boolean; apply: (on: boolean) => void }>();
+  private readonly presses = new Map<string, () => void>();
   private visible = false;
   private fpsFrames = 0;
   private fpsTime = 0;
@@ -47,6 +48,12 @@ export class Debug {
       if (e.code === 'F1') {
         e.preventDefault(); // browsers open help on F1
         this.setVisible(!this.visible);
+        return;
+      }
+      const press = this.presses.get(e.code);
+      if (press) {
+        e.preventDefault();
+        press();
         return;
       }
       const toggle = this.toggles.get(e.code);
@@ -77,6 +84,11 @@ export class Debug {
     const on = this.toggles.get(code)?.on ?? false;
     this.toggles.set(code, { on, apply });
     apply(on);
+  }
+
+  /** Register a keyed debug ACTION (e.g. 'F5' → next checkpoint): runs on every press, never at registration. */
+  registerPress(code: string, run: () => void): void {
+    this.presses.set(code, run);
   }
 
   isToggleOn(code: string): boolean {
