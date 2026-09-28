@@ -60,6 +60,8 @@ Three sentences. Every future decision gets checked against them.
 2. **Every power is also a liability.** Wind makes you light — so wind zones blow *you* around too. Earth makes you heavy — so you can't glide. There are no free upgrades.
 3. **No words.** No tutorial text, no dialogue, no HUD tips. If the player doesn't understand, the level is wrong.
 
+**Colour language** *(corollary of pillar 3 — VP decision 2026-09-27, WO-004 B7)*. With no words, colour and shape are the game's only vocabulary, so they are **reserved**. Each element's hue (Wind grey-blue, Fire red/orange, Water blue, Earth brown/ochre) and the Core's octahedron shape belong to Cores and element effects only. Nothing else may use them: not collectibles, not markers, not UI. (Found in the M4a playtest: a red octahedral Shard read as a Fire Core. The Shard is now a violet tetrahedron.)
+
 ### Core loop
 
 ```
@@ -77,10 +79,11 @@ See an obstacle you cannot pass
 - ❌ No inventory, skill tree, currency, XP.
 - ❌ No procedural generation.
 - ❌ No multiplayer.
-- ❌ No mobile / touch controls.
+- ❌ No touch controls. **Web only** for now; iOS is considered only after the full game's public release, most likely by wrapping this web build, not rewriting it (VP decision 2026-09-27, WO-004 B1). See §8.7.
 - ❌ No skeletal animation, no imported 3D models.
 - ❌ No physics engine (Rapier/Cannon/Ammo). See §8.3.
-- ❌ No second element until Wind is fully shipped and playable end-to-end.
+- ❌ No second element before the Level 1 + Wind slice (M4b–M6) is complete in the private preview (WO-004 B3).
+- ❌ No public release before the full game (WO-004 B2). Builds go only to the private preview (§10, §12).
 
 ---
 
@@ -434,6 +437,17 @@ Plus: **one hidden Shard**, off the critical path, reachable only by gusting *do
 
 Nine props. That's the whole level. Anything else is scope creep.
 
+**WindZone mass rule** *(WO-004 B8)*. A zone that forms a liability must make the Wind body **lose** a tug-of-war that the plain body **wins**. A body braced against a zone walks at `moveSpeed − F / (m·drag)`, so the zone's force F must satisfy
+
+```
+m_wind · drag · v_wind  <  F  <  m_base · drag · v_base
+0.6 · 2.5 · 7.2 = 10.8  <  F  <  1.0 · 2.5 · 6.5 = 16.25     (at drag 2.5)
+```
+
+At 9.5 (the §9 default) a braced Wind body out-walks the wind (7.2 vs 6.3 m/s terminal) and Beat 4's twist disappears. A test enforces the rule when Beat 4's zone is authored; the disposable sandbox is exempt. At the fixed 60 Hz step the terminal speed sits ~2% above `F / (m·drag)`, which narrows the window to about 10.6 < F < 15.9, so the test must use the simulated terminal.
+
+**M4b playtest units** *(WO-004 B9, DM ruling)*. Level 1 is built and played in four units: Beats 0–2 (the yard), Beat 3, Beat 4, Beats 5 + 6. The VP plays each unit before the next is built.
+
 ---
 
 ## §7. Level data format
@@ -611,6 +625,18 @@ export interface Ability {
 
 **Contract:** `resolveStats` is pure and unit-tested. Elements never mutate the player directly.
 
+### 8.7 Platform constraints *(VP decisions 2026-09-27, WO-004 B1/B4/B5/B6)*
+
+These are constraints on how everything is built, not features.
+
+- **Web only** until the full game's public release. iOS comes after that, if at all, most likely by wrapping this web build. Touch controls stay an anti-goal.
+- **Private preview from M4b.** Each playtest unit goes to a *restricted* itch.io page (README "Preview build"). No build is ever made public before the Release step (§12).
+- **Semantic input only** (CLAUDE.md hard rule 11). Gameplay reads the move vector, jump and action — never key codes, mouse position, hover or right-click. Debug keys are exempt.
+- **Aim stays forgiving.** No verb may demand precise aiming.
+- **Generous timing on the critical path.** Precision lives only in optional content (shards).
+- **Frame rate is checked in iPhone Safari** at every milestone from M4b.
+- **The M6 shell ships:** a swappable save backend (iOS Safari can evict site storage), audio unlocked by the title-screen press, a HUD inside the screen's safe area, and prompt glyphs that follow the last-used input device.
+
 ---
 
 ## §9. Starting tuning values
@@ -701,16 +727,16 @@ export const TUNING = {
 | **M2** | **Character + controller.** Chassis, capsule vs BVH, camera-relative movement, jump + coyote + buffer + variable height, ground snap, slopes, squash/stretch, mass field. **Plus the two M2 requirements below this table (render interpolation; ground shadow + landing indicator).** | Someone else plays it and *doesn't comment on the movement*. That's the bar. Silence = success. |
 | **M3** | **Element architecture.** Registry, `ElementModule`, loadout array (cap 1), `resolveStats` (unit tested), socket/attachment system, token pickup + HUD slot. **Wind is a stub: tint + stat mods only, no abilities.** | Touch the Core → turn grey, jump higher. `MAX_ACTIVE` exists in config. `resolveStats` has passing tests. |
 | **M4a** | **Wind abilities + all 9 props — sandbox only.** Gust, Glide. Props react to `PushEvent`, never to `'wind'` and never to tags. Signal/gate wiring. Checkpoints. Proven in a throwaway `sandbox.json`; `level01`'s layout is untouched. | Every prop and every ability works in the sandbox. The thin-platform tunnelling arbiter is re-run against real forces. All gates green. |
-| **M4b** | **Level 1 proper.** The real layout, built beat by beat per §6.2 — the VP plays each beat before the next one is built. | Level 1 is completable start to finish |
-| **M5** | **VFX + game feel.** Streaks, motes, rotor, trail, the pickup moment, hit-stop, camera punch, land particles | The pickup moment makes you smile. Then, and only then, move on. |
+| **M4b** | **Level 1 proper.** The real layout, built in four playtest units (§6.4): Beats 0–2, Beat 3, Beat 4, Beats 5+6 — the VP plays each unit before the next is built. **Private preview starts here** (§8.7): each unit goes to the restricted itch.io page. | Level 1 is completable start to finish |
+| **M5** | **VFX + game feel.** Streaks, motes, rotor, trail, the pickup moment, hit-stop, camera punch, land particles. **Plus:** checkpoint activation must read without words (the VP didn't recognise the M4a pads — WO-004 B10). | The pickup moment makes you smile. Then, and only then, move on. |
 | **M6** | **Shell.** Title, pause, level complete, save/load, level select, audio, settings | A stranger plays from a URL, start to finish, without you in the room |
-| **M7** | **Polish + ship.** Bloom, fog, loading screen. **Deploy to itch.io.** | It's public. Real people can click it. |
+| **M7** | **Polish.** Bloom, fog, loading screen. Updated in the private preview only; the public deploy moved to the final **Release** step after the full game (§12, WO-004 B2). | The slice looks finished to preview testers. |
 
 **M2 REQUIREMENT — render interpolation** *(added at M0.5)*. Game exposes `alpha = accumulator / fixedDt`. Player renders at `lerp(prevTransform, currTransform, alpha)`. Without this a 60Hz sim rendered at any other rate judders, and I will mistake judder for bad movement tuning and waste a session.
 
 **M2 REQUIREMENT — ground shadow + landing indicator** *(added at M0.5)*. A directional shadow for grounding, PLUS an always-visible blob raycast straight down from the player. In an angled 3D view height is unreadable without it, and I cannot judge whether jumping feels good if I cannot tell where I am going to land.
 
-Then — and only then — **Fire**.
+Then — and only then — **Fire**: once the Level 1 + Wind slice (M4b–M6) is complete in the private preview (WO-004 B3).
 
 ---
 
@@ -726,7 +752,7 @@ These will happen to you. Naming them now is the only defence.
 
 4. **The scope trap.** "Just a quick enemy." "Let's try Fire and see." "What if there was a story." Each one is a project-ender before Level 1 ships. §1's anti-goals list exists for this.
 
-5. **The abandonment trap.** The base rate for finishing a hobby game is well under 10%. Your countermeasures: the always-playable rule, the 5-minute level, and **shipping publicly at M7 even though it's tiny.** A finished 5-minute game is worth infinitely more than an abandoned 30-hour one — to you, and to whoever you eventually show it to.
+5. **The abandonment trap.** The base rate for finishing a hobby game is well under 10%. Your countermeasures: the always-playable rule, the 5-minute level, and **a private preview from M4b** (a restricted itch.io page with real testers; the public release waits for the full game — WO-004 B2/B4). A finished 5-minute game is worth infinitely more than an abandoned 30-hour one — to you, and to whoever you eventually show it to.
 
 6. **The taste gap.** Claude Code will write correct code that feels wrong. It cannot play the game. **Judging feel is your job and it is the only part of this project you cannot delegate.** After every milestone: play for 10 minutes, write 5 bullets on what feels bad, feed those in as the next session's input. That loop is the project.
 
@@ -738,8 +764,9 @@ These will happen to you. Naming them now is the only defence.
 2. **Water. Earth.**
 3. **Levels 2–4** — one per element, each teaching one verb, each ~5 minutes.
 4. **Level 5+** — swap puzzles. Now the mass axis (§2.2) earns its keep.
-5. **Then, and only then:** flip `MAX_ACTIVE` to 2 and start the fusion table (§2.5).
-6. Speedrun timer + ghost. Trivial to add, enormous replay value, costs almost nothing.
+5. **Release** *(WO-004 B2)*. The first and only public release: all four elements, a level per element, the swap-puzzle levels. Strip debug keys from the build here. Only after it: consider iOS (§8.7).
+6. **Post-release, and only then:** flip `MAX_ACTIVE` to 2 and start the fusion table (§2.5, unchanged).
+7. Speedrun timer + ghost. Trivial to add, enormous replay value, costs almost nothing.
 
 ---
 

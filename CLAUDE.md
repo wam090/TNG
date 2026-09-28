@@ -91,6 +91,9 @@ Test files are **exempt** from the line limit (WO-003 ruling). Source files are 
 ### 10. Every new system gets a debug toggle in `core/Debug.ts`.
 F1 = stats. F2 = colliders. F3 = prop gizmos. F4 = grant/revoke elements. F5 = teleport to checkpoint N.
 
+### 11. Gameplay reads semantic actions only.
+Move vector, jump, action — that is the whole input vocabulary gameplay may see. It never reads key codes, mouse position, hover or right-click; bindings live in `core/Input.ts` and nowhere else. Debug keys (F1–F5) are exempt. (VP decision 2026-09-27, WO-004 B5 — keeps the iOS wrap possible, SPEC §8.7.)
+
 ---
 
 ## SCOPE — the anti-goals list. Do not build these. Do not suggest building these.
@@ -100,8 +103,9 @@ F1 = stats. F2 = colliders. F3 = prop gizmos. F4 = grant/revoke elements. F5 = t
 - ❌ Inventory, skill trees, currency, XP
 - ❌ Procedural generation
 - ❌ Multiplayer, networking
-- ❌ Mobile / touch controls
-- ❌ A second element before Level 1 ships end-to-end
+- ❌ Touch controls (web only until the full game's public release — SPEC §8.7)
+- ❌ A second element before the Level 1 + Wind slice (M4b–M6) is complete in the private preview
+- ❌ Any public deploy — builds go to the restricted itch.io preview only, until the full game's Release step (SPEC §12)
 - ❌ The fusion system (the type exists; the content does not)
 
 If you believe an anti-goal is necessary, say so explicitly and stop. Do not build it.
@@ -152,4 +156,4 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`M4a — Abilities + props, sandbox only.` Done when: Gust and Glide work and are lifecycle/cooldown tested; all nine §6.4 props react to events, signals and overlap in `sandbox.json` with **zero element names and zero tags** in `src/world/props/**` (lint-enforced); hit-stop uses the pickup-dilation mechanism and combines with it by MIN, tested; the thin-platform tunnelling arbiter is re-run at the computed worst-case speed; `TUNING.player.maxSpeedSafety` exists, is counted in F1, and never engages in designed play; F3 prop gizmos and F5 checkpoint teleport work; all four gates + shot:check green. `level01` layout is untouched — that's M4b.
+`WO-004 — M4a close-out · decision record · private preview pipeline · M4b unit 1 (Beats 0–2, the Still Yard).` Done when: Gust reach is measured to prop bounds (±0.1 m agreement, tested) with a ±45° provisional cone and an F3 wedge; the Shard is a non-element violet tetrahedron; the VP's 2026-09-27 decisions are in SPEC/CLAUDE/DECISIONS; one command builds an itch.io zip, a scripted smoke test boots the production build from a subpath, `?debug=1` works in production and F1 shows the build hash; level01 is the Still Yard (enclosed, no void, no sequence break — tested; spawn frame shows windmill, shaft, gate and Core), with the windmill shaft, the Beat 2 action-glyph prompt and a `yard_chain` harness script; all gates + shot:check green. Stop before Beat 3.
