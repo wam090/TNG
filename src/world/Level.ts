@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Debug } from '../core/Debug';
 import type { EventBus, PushEvent } from '../core/Events';
-import { DEG2RAD } from '../core/Math';
 import type { ElementRegistry } from '../elements/ElementRegistry';
 import type { Materials } from '../render/Materials';
 import { Collider } from './Collider';
 import type { BuiltLevel, LevelBuilder } from './LevelBuilder';
 import { parseLevel } from './LevelSchema';
 import { Checkpoint } from './props/Checkpoint';
+import { pushHits, pushReach } from './PushCone';
+import { PushGizmo, type PushGizmoTarget } from './PushGizmo';
 import type { Prop, PropContext, PropPlayerView } from './props/Prop';
 import { createProp } from './props/PropFactory';
 import { Token } from './props/Token';
@@ -35,6 +36,7 @@ export class Level {
     transparent: true,
   });
   private readonly gizmos = new THREE.Group();
+  private readonly pushGizmo = new PushGizmo();
   private tokens: Token[] = [];
   private props: Prop[] = [];
   private solidKey = '';
@@ -52,6 +54,7 @@ export class Level {
       if (this.wireframe) this.wireframe.visible = on;
     });
     this.gizmos.name = 'prop-gizmos';
+    this.gizmos.add(this.pushGizmo.group);
     scene.add(this.gizmos);
     debug.registerToggle('F3', (on) => {
       this.gizmos.visible = on;
@@ -85,30 +88,32 @@ export class Level {
     for (const token of this.tokens) token.update(dt, player.feet);
     const ctx = this.context(player);
     for (const prop of this.props) prop.update(dt, ctx);
+    this.pushGizmo.update(dt);
     if (this.currentSolidKey() !== this.solidKey) this.rebuildCollider();
   }
 
   /**
-   * Deliver a push to every pushable prop inside the cone. Range is a 3D
-   * distance from the origin; the cone is horizontal (azimuth within
-   * coneDeg/2 of the aim), so a tall windmill hub is not missed for sitting
-   * above the gust. Returns how many props were hit.
+   * Deliver a push to every pushable prop it reaches: its BOUNDS within
+   * `range` (3D) and within ±`coneHalfDeg` of the aim (horizontal). Measured
+   * against bounds, not a centre point, so the same distance to a prop's edge
+   * registers the same on every prop. F3 shows the wedge and each pushable's
+   * hit/miss for `debugShowFor` seconds. Returns how many props were hit.
    */
-  pushCone(e: PushEvent, range: number, coneDeg: number, player: PropPlayerView): number {
-    const cosHalf = Math.cos((coneDeg / 2) * DEG2RAD);
-    const aim = new THREE.Vector2(e.dir.x, e.dir.z).normalize();
+  pushCone(e: PushEvent, range: number, coneHalfDeg: number, player: PropPlayerView, debugShowFor: number): number {
+    const aim = new THREE.Vector3(e.dir.x, 0, e.dir.z).normalize();
     const ctx = this.context(player);
+    const shown: PushGizmoTarget[] = [];
     let hits = 0;
     for (const prop of this.props) {
-      const target = prop.pushTarget();
-      if (!target) continue;
-      const d = target.clone().sub(e.origin);
-      if (d.length() > range) continue;
-      const flat = new THREE.Vector2(d.x, d.z);
-      if (flat.lengthSq() > 0 && flat.normalize().dot(aim) < cosHalf) continue;
+      const bounds = prop.pushBounds();
+      if (!bounds) continue;
+      const hit = pushHits(pushReach(e.origin, aim, bounds), range, coneHalfDeg);
+      shown.push({ bounds, hit });
+      if (!hit) continue;
       prop.onPush(e, ctx);
       hits += 1;
     }
+    this.pushGizmo.show(e.origin, aim, range, coneHalfDeg, shown, debugShowFor);
     return hits;
   }
 
@@ -178,7 +183,9 @@ export class Level {
     for (const prop of this.props) prop.dispose();
     this.tokens = [];
     this.props = [];
+    this.pushGizmo.clear();
     this.gizmos.clear();
+    this.gizmos.add(this.pushGizmo.group);
   }
 
   /** Respawn points of every checkpoint, in JSON order (F5 cycles through these). */

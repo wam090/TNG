@@ -54,7 +54,7 @@ const playerView = {
   },
 };
 player.setAbilityHooks({
-  pushCone: (e, range, coneDeg) => level.pushCone(e, range, coneDeg, playerView),
+  pushCone: (e, range, coneHalfDeg, debugShowFor) => level.pushCone(e, range, coneHalfDeg, playerView, debugShowFor),
   hitStop: (duration) => {
     timeScale.push('hitStop', TUNING.elements.hitStopScale, duration);
   },

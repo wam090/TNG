@@ -28,7 +28,7 @@ function ctx(over: Partial<AbilityContext> = {}): AbilityContext {
 }
 
 interface Recorder extends AbilityWorld {
-  pushes: { e: PushEvent; range: number; coneDeg: number }[];
+  pushes: { e: PushEvent; range: number; coneHalfDeg: number; showFor: number }[];
   impulses: THREE.Vector3[];
   hitStops: number[];
 }
@@ -38,8 +38,8 @@ function recorder(hitsPerPush: number): Recorder {
     pushes: [],
     impulses: [],
     hitStops: [],
-    pushCone: (e, range, coneDeg) => {
-      r.pushes.push({ e, range, coneDeg });
+    pushCone: (e, range, coneHalfDeg, showFor) => {
+      r.pushes.push({ e, range, coneHalfDeg, showFor });
       return hitsPerPush;
     },
     applyImpulse: (j) => {
@@ -92,7 +92,8 @@ describe('Gust — what it does when it fires', () => {
     const p = w.pushes[0];
     expect(p?.e.force).toBe(G.force);
     expect(p?.range).toBe(G.range);
-    expect(p?.coneDeg).toBe(G.coneDeg);
+    expect(p?.coneHalfDeg).toBe(G.coneHalfDeg);
+    expect(p?.showFor).toBe(G.duration); // F3 shows the wedge for the gust's duration
     expect(p?.e.origin.y).toBeCloseTo(2 + TUNING.player.height / 2, 9);
     expect(p?.e.tags).toEqual(['light', 'air']);
   });

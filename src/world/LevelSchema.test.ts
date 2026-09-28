@@ -116,7 +116,7 @@ describe('parseLevel', () => {
 
   it('lists valid material names on a bad mat', () => {
     expect(() => parseLevel(level({ blocks: [box({ mat: 'marble' })] }))).toThrow(
-      /blocks\[0\].*unknown mat "marble".*stone \| pillar \| metal \| accent/,
+      /blocks\[0\].*unknown mat "marble".*\(expected stone \| pillar \| metal\)/,
     );
   });
 

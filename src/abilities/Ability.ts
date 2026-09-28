@@ -27,8 +27,11 @@ export interface AbilityContext {
 export interface AbilityWorld {
   /** Push the player through the mass path: Δv = impulse ÷ mass. */
   applyImpulse(impulse: THREE.Vector3): void;
-  /** Deliver `e` to every pushable inside the cone; returns how many were hit. */
-  pushCone(e: PushEvent, range: number, coneDeg: number): number;
+  /**
+   * Deliver `e` to every pushable within `range` and ±`coneHalfDeg` of its
+   * aim; returns how many were hit. A debug view may show it for `debugShowFor` s.
+   */
+  pushCone(e: PushEvent, range: number, coneHalfDeg: number, debugShowFor: number): number;
   /** Freeze the sim briefly via the shared TimeScale (MIN-combined with dilation). */
   hitStop(duration: number): void;
 }

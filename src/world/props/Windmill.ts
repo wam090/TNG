@@ -5,6 +5,7 @@ import { DEG2RAD } from '../../core/Math';
 import type { Materials } from '../../render/Materials';
 import { GIZMO_COLOR, setGizmoColor, wireSphere } from '../PropGizmos';
 import type { WindmillData } from '../PropSchema';
+import type { PushBounds } from '../PushCone';
 import { solidBox, type Prop, type PropContext } from './Prop';
 
 // Structural geometry (like chassis proportions) — not feel tunables.
@@ -94,8 +95,16 @@ export class Windmill implements Prop {
     setGizmoColor(this.marker, this.emitted ? GIZMO_COLOR.done : atSpeed ? GIZMO_COLOR.active : GIZMO_COLOR.idle);
   }
 
-  pushTarget(): THREE.Vector3 {
-    return this.hubWorld();
+  /** The whole machine — tower and rotor disc — in the windmill's own frame. */
+  pushBounds(): PushBounds {
+    const reach = BLADE_SIZE[1];
+    return {
+      box: new THREE.Box3(
+        new THREE.Vector3(-reach, 0, -TOWER_SIZE[2] / 2),
+        new THREE.Vector3(reach, HUB_HEIGHT + reach, ROTOR_OFFSET + HUB_RADIUS),
+      ),
+      frame: this.rootMatrix().clone(),
+    };
   }
 
   onPush(e: PushEvent): void {

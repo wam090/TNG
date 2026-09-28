@@ -148,35 +148,72 @@ describe('Windmill (SPEC §6.4) — reacts to push FORCE, never to identity', ()
   });
 });
 
-// ── Push delivery (the cone) ───────────────────────────────────────────────
-describe('Level.pushCone — who gets pushed', () => {
+// ── Push delivery (the cone, WO-004 A1) ────────────────────────────────────
+describe('Level.pushCone — reach is measured to each pushable\'s BOUNDS', () => {
   const G = TUNING.wind.gust;
   const origin = new THREE.Vector3(0, TUNING.player.height / 2, 0);
   const windmillAt = (z: number): unknown => ({ type: 'windmill', id: 'wm', pos: [0, 0, z], emits: 'sig' });
-  const gust = (dir: THREE.Vector3): PushEvent => ({ origin: origin.clone(), dir, force: G.force, tags: [] });
+  const gust = (dir: THREE.Vector3, from = origin): PushEvent => ({ origin: from.clone(), dir, force: G.force, tags: [] });
+  const cone = (level: Level, e: PushEvent): number => level.pushCone(e, G.range, G.coneHalfDeg, playerView(), G.duration);
 
   it('hits a windmill 5 m ahead (Beat 2 distance) when aimed at it', () => {
-    const level = makeLevel([windmillAt(-5)]);
-    expect(level.pushCone(gust(new THREE.Vector3(0, 0, -1)), G.range, G.coneDeg, playerView())).toBe(1);
+    expect(cone(makeLevel([windmillAt(-5)]), gust(new THREE.Vector3(0, 0, -1)))).toBe(1);
   });
 
   it('misses when aimed away, or out of range', () => {
-    expect(makeLevel([windmillAt(-5)]).pushCone(gust(new THREE.Vector3(1, 0, 0)), G.range, G.coneDeg, playerView())).toBe(0);
-    expect(makeLevel([windmillAt(-8)]).pushCone(gust(new THREE.Vector3(0, 0, -1)), G.range, G.coneDeg, playerView())).toBe(0);
+    expect(cone(makeLevel([windmillAt(-5)]), gust(new THREE.Vector3(0, 0, 1)))).toBe(0);
+    expect(cone(makeLevel([windmillAt(-8)]), gust(new THREE.Vector3(0, 0, -1)))).toBe(0);
   });
 
-  it('respects the cone half-angle (coneDeg / 2)', () => {
-    const level = makeLevel([windmillAt(-5)]);
-    const half = (G.coneDeg / 2) * (Math.PI / 180);
-    const inside = new THREE.Vector3(Math.sin(half * 0.8), 0, -Math.cos(half * 0.8));
-    const outside = new THREE.Vector3(Math.sin(half * 1.3), 0, -Math.cos(half * 1.3));
-    expect(level.pushCone(gust(inside), G.range, G.coneDeg, playerView())).toBe(1);
-    expect(level.pushCone(gust(outside), G.range, G.coneDeg, playerView())).toBe(0);
+  it('the cone is ±coneHalfDeg (no longer halved)', () => {
+    // A small target (debris, 1.6 m) 4.5 m away, just inside / outside the half-angle.
+    const level = makeLevel([{ type: 'debris', id: 'd', pos: [0, 0, -4.5], emits: 'x' }]);
+    const at = (deg: number): THREE.Vector3 => {
+      const a = (deg * Math.PI) / 180;
+      return new THREE.Vector3(Math.sin(a), 0, -Math.cos(a));
+    };
+    const edgeDeg = (Math.atan2(0.8, 4.5 - 0.8) * 180) / Math.PI; // footprint's angular half-width
+    expect(cone(level, gust(at(G.coneHalfDeg + edgeDeg - 1)))).toBe(1);
+    expect(cone(makeLevel([{ type: 'debris', id: 'd', pos: [0, 0, -4.5], emits: 'x' }]), gust(at(G.coneHalfDeg + edgeDeg + 3)))).toBe(0);
+  });
+
+  it('a wide prop whose CENTRE is outside the cone but whose edge is inside is hit', () => {
+    // Windmill rotor spans ±1.4 m: at 3 m ahead and 3.2 m to the side its centre is ~47° off-aim.
+    const level = makeLevel([{ type: 'windmill', id: 'wm', pos: [3.2, 0, -3], emits: 'sig' }]);
+    expect(cone(level, gust(new THREE.Vector3(0, 0, -1)))).toBe(1);
+  });
+
+  it('the SAME distance to a prop\'s edge registers the same on windmill, debris and fan (±0.1 m)', () => {
+    // Straight-on approach; binary-search the farthest edge distance that still hits.
+    const cases: [unknown, 'x' | 'z', number][] = [
+      [{ type: 'windmill', id: 'w', pos: [0, 0, 0], emits: 's' }, 'z', 0.3 + 0.22], // rotor hub front
+      // A threshold no push reaches keeps the pile standing across every probe.
+      [{ type: 'debris', id: 'd', pos: [0, 0, 0], emits: 's', threshold: 1e9 }, 'x', 0.8], // pile edge
+      [{ type: 'fan', id: 'f', pos: [0, 0, 0] }, 'z', 0.25 + 0.075], // blade face
+    ];
+    const reach = cases.map(([prop, axis, edge]) => {
+      const level = makeLevel([prop]);
+      const hits = (d: number): boolean => {
+        const from = new THREE.Vector3(axis === 'x' ? d : 0, TUNING.player.height / 2, axis === 'z' ? d : 0);
+        const dir = new THREE.Vector3(axis === 'x' ? -1 : 0, 0, axis === 'z' ? -1 : 0);
+        return level.pushCone(gust(dir, from), G.range, G.coneHalfDeg, playerView(), 0) > 0;
+      };
+      let lo = 0;
+      let hi = 20;
+      for (let i = 0; i < 50; i += 1) {
+        const mid = (lo + hi) / 2;
+        if (hits(mid)) lo = mid;
+        else hi = mid;
+      }
+      return lo - edge;
+    });
+    expect(Math.max(...reach) - Math.min(...reach)).toBeLessThan(0.1);
+    for (const r of reach) expect(r).toBeCloseTo(G.range, 1);
   });
 
   it('one Gust spins a Beat-2 windmill all the way to its signal (the whole chain)', () => {
     const level = makeLevel([windmillAt(-5)]);
-    level.pushCone(gust(new THREE.Vector3(0, 0, -1)), G.range, G.coneDeg, playerView());
+    cone(level, gust(new THREE.Vector3(0, 0, -1)));
     const view = playerView(new THREE.Vector3(0, 0, 0));
     for (let i = 0; i < 120; i += 1) level.update(DT, view);
     expect(level.signals.isOn('sig')).toBe(true);
@@ -267,7 +304,7 @@ describe('Debris (SPEC §6.4) — push force > 8 destroys it', () => {
     expect(d.isDestroyed).toBe(true);
     expect(c.signals.isOn('vent')).toBe(true);
     expect(d.solid()).toBeNull();
-    expect(d.pushTarget()).toBeNull();
+    expect(d.pushBounds()).toBeNull();
   });
 });
 
@@ -436,7 +473,7 @@ describe('Checkpoint, Shard, Goal (SPEC §6.4) — player overlap', () => {
   });
 
   it('Shard: overlap collects it once and despawns it', () => {
-    const shard = new Shard({ type: 'shard', id: 'sh', pos: [0, 1.5, 0] }, new THREE.Scene(), new Materials());
+    const shard = new Shard({ type: 'shard', id: 'sh', pos: [0, 1.5, 0] }, new THREE.Scene());
     const c = propCtx(playerView(new THREE.Vector3(0, 0, 0)));
     step(shard, c, 0.5);
     expect(c.events).toEqual(['shard:sh']);
@@ -444,7 +481,7 @@ describe('Checkpoint, Shard, Goal (SPEC §6.4) — player overlap', () => {
   });
 
   it('Shard: a near miss does not collect', () => {
-    const shard = new Shard({ type: 'shard', id: 'sh', pos: [0, 1.5, 0] }, new THREE.Scene(), new Materials());
+    const shard = new Shard({ type: 'shard', id: 'sh', pos: [0, 1.5, 0] }, new THREE.Scene());
     const c = propCtx(playerView(new THREE.Vector3(TUNING.props.shard.radius + 0.2, 0, 0)));
     step(shard, c, 0.5);
     expect(c.events).toEqual([]);

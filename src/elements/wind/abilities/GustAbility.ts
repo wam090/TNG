@@ -51,7 +51,7 @@ export class GustAbility implements Ability {
     const origin = s.feet.clone();
     origin.y += TUNING.player.height / 2; // from the body's centre, not the feet
     const e: PushEvent = { origin, dir: this.aim.clone(), force: G.force, tags: s.tags };
-    if (w.pushCone(e, G.range, G.coneDeg) > 0) w.hitStop(G.hitStop);
+    if (w.pushCone(e, G.range, G.coneHalfDeg, G.duration) > 0) w.hitStop(G.hitStop);
     const recoil = s.grounded ? G.selfImpulseGround : G.selfImpulseAir;
     if (recoil > 0) w.applyImpulse(this.aim.clone().multiplyScalar(-recoil));
   }

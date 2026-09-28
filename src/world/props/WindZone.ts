@@ -75,7 +75,7 @@ export class WindZone implements Prop {
     setGizmoColor(this.box, phase === 'gust' ? GIZMO_COLOR.active : phase === 'telegraph' ? GIZMO_COLOR.idle : GIZMO_COLOR.volume);
   }
 
-  pushTarget(): null {
+  pushBounds(): null {
     return null;
   }
 

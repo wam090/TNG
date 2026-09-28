@@ -53,7 +53,7 @@ export class Gate implements Prop {
     setGizmoColor(this.gizmo, this.isOpen ? GIZMO_COLOR.done : this.opening ? GIZMO_COLOR.active : GIZMO_COLOR.idle);
   }
 
-  pushTarget(): null {
+  pushBounds(): null {
     return null;
   }
 

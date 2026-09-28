@@ -66,7 +66,7 @@ export class Updraft implements Prop {
     setGizmoColor(this.gizmo, !this.enabled ? GIZMO_COLOR.idle : inside ? GIZMO_COLOR.active : GIZMO_COLOR.done);
   }
 
-  pushTarget(): null {
+  pushBounds(): null {
     return null;
   }
 

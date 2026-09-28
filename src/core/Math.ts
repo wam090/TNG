@@ -1,4 +1,5 @@
 export const DEG2RAD = Math.PI / 180;
+export const RAD2DEG = 180 / Math.PI;
 
 /**
  * Frame-rate-independent smoothing factor. Use as the alpha of any lerp that

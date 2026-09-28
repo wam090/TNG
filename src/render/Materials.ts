@@ -6,8 +6,9 @@ const PALETTE = {
   stone: '#A8ABAD', // mid grey — ground, ramps, cliff mass
   pillar: '#CFC9BD', // warm off-white — pedestals, standing stones
   metal: '#7F8A92', // cool dark grey — mechanisms, gates, shafts
-  accent: '#C2453A', // muted red — markers, the M1 camera-target stand-in
 } as const;
+// `accent` (#C2453A, red) was retired at WO-004: red is Fire's hue, and element hues are
+// reserved for Cores and element effects (SPEC colour language). Its only user was the Shard.
 
 export type MaterialName = keyof typeof PALETTE;
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TUNING } from '../../config/tuning';
 import type { PushEvent } from '../../core/Events';
+import type { PushBounds } from '../PushCone';
 import type { Vec3Tuple } from '../SchemaUtil';
 import type { Signals } from '../Signals';
 
@@ -35,8 +36,8 @@ export interface Prop {
   readonly id: string;
   /** One fixed sim step on world (dilation-scaled) time. */
   update(dt: number, ctx: PropContext): void;
-  /** World point a push cone must reach to hit this prop; null = not pushable. */
-  pushTarget(): THREE.Vector3 | null;
+  /** What a push must reach to hit this prop (its visible extent); null = not pushable. */
+  pushBounds(): PushBounds | null;
   onPush(e: PushEvent, ctx: PropContext): void;
   /** World-space collision geometry while solid (e.g. a closed gate); null = not solid now. */
   solid(): THREE.BufferGeometry | null;

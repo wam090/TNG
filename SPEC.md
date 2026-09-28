@@ -666,7 +666,7 @@ export const TUNING = {
     },
     glide: { maxFallSpeed: 3.2, horizontalDrag: 0.92, airControl: 0.95, minAirTime: 0.15 },
     gust: {
-      cooldown: 0.55, range: 5.5, coneDeg: 45, force: 18,
+      cooldown: 0.55, range: 5.5, coneHalfDeg: 45, force: 18,   // ±45°, measured to each prop's bounds (WO-004)
       selfImpulseAir: 5.0, selfImpulseGround: 0,
       windup: 0.08, duration: 0.18, hitStop: 0.04,
     },

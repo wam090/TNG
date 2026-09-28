@@ -36,7 +36,7 @@ export function createProp(data: PropData, deps: PropDeps): Prop {
     case 'checkpoint':
       return new Checkpoint(data, scene, materials);
     case 'shard':
-      return new Shard(data, scene, materials);
+      return new Shard(data, scene);
     case 'goal':
       return new Goal(data, scene);
   }

@@ -38,7 +38,7 @@ export const TUNING = {
     jumpSnapSuppress: 0.1, // [feel-fix] ground-snap can't recapture within this window after a jump (also after any upward launch)
     // [M4a] External pushes (wind zones, Gust recoil) ride their own velocity channel that steering
     // never brakes; it fades at this rate (1/s). Terminal speed in a zone = force / (mass × drag).
-    // PROVISIONAL — the VP picks from the WO-003 menu: 1.5 (brutal) / 2.5 (recommended first) / 4.0 (gentle).
+    // VP-approved 2026-09-27 (sandbox); re-judged in Level 1 context. Menu was 1.5 / 2.5 / 4.0.
     externalDrag: 2.5,
     // [M4a] Speed safety cap (m/s): clamps |velocity| below the verified 60 m/s collision envelope and is
     // counted in F1. It must NEVER engage in designed play — any hit is a level or tuning bug.
@@ -74,7 +74,7 @@ export const TUNING = {
     pickupTimeDilation: { scale: 0.25, duration: 0.3 },
     tintLerpTime: 0.35,
     fovPunch: { delta: -4, inTime: 0.1, outTime: 0.4 }, // [M3+ stub feel — VP owns these at M5]
-    hitStopScale: 0, // [M4a] SPEC §5.2 "freeze the sim" — the time scale during hit-stop (MIN-combined with dilation)
+    hitStopScale: 0, // SPEC §5.2 "freeze the sim" (MIN-combined with dilation). VP-approved 2026-09-27 (sandbox)
   },
 
   wind: {
@@ -90,7 +90,9 @@ export const TUNING = {
     gust: {
       cooldown: 0.55,
       range: 5.5,
-      coneDeg: 45,
+      // HALF-angle of the cone (±). PROVISIONAL (WO-004, ruling 2): the VP judges it at his
+      // next play from the menu 30 / 37.5 / 45. Was `coneDeg` 45 read as the full cone (±22.5°).
+      coneHalfDeg: 45,
       force: 18,
       selfImpulseAir: 5.0,
       selfImpulseGround: 0,
@@ -116,22 +118,26 @@ export const TUNING = {
       velocity: 9.0, // rise-speed ceiling (m/s): the lift stops pushing once vy reaches it
       maxHeight: 12, // default column height when JSON omits "size"
       width: 3, // [M4a] default column footprint (SPEC §7 sample size [3, 12, 3])
-      // [M4a PROVISIONAL] upward FORCE (DM ruling: mass-sensitive). Must sit inside
-      // (lightMass·g·lightFallMult, baseMass·g) = (16.56, 24) so the light body rises even
-      // when it drops in, and the base body cannot rise at all. Candidates 18 / 20 / 22.
+      // Upward FORCE (DM ruling: mass-sensitive). VP-approved 2026-09-27 (sandbox); re-judged
+      // in Level 1 context. Must stay inside (lightMass·g·lightFallMult, baseMass·g) = (16.56, 24)
+      // so the light body rises even when it drops in and the base body cannot rise at all.
       force: 20,
     },
-    gate: { openTime: 1.2, size: [3, 3, 0.4] }, // [M4a PROVISIONAL] sink-open time (s); default slab
+    gate: { openTime: 1.2, size: [3, 3, 0.4] }, // openTime VP-approved 2026-09-27 (sandbox); default slab
     debris: { threshold: 8 }, // [M4a] SPEC §6.4 default push force; JSON may override
-    fan: { threshold: 10, reach: 14, width: 4, height: 4, force: 9.5, bladeSpin: 14 }, // [M4a] threshold per SPEC; current PROVISIONAL; bladeSpin rad/s (visual)
+    // threshold per SPEC; current reach/width/height/force VP-approved 2026-09-27 (sandbox); bladeSpin rad/s (visual)
+    fan: { threshold: 10, reach: 14, width: 4, height: 4, force: 9.5, bladeSpin: 14 },
     checkpoint: { radius: 1.5 }, // [M4a] trigger radius around the respawn point
-    shard: { radius: 0.8, spinRate: 1.8, visualRadius: 0.22 }, // [M4a] pickup radius; visuals
+    // [M4a] pickup radius; visuals. WO-004 A2 / SPEC colour language: a violet TETRAHEDRON —
+    // never the Core's octahedron, never an element hue (Wind grey-blue, Fire red/orange,
+    // Water blue, Earth brown/ochre). Candidate for the VP's veto.
+    shard: { radius: 0.8, spinRate: 1.8, visualRadius: 0.26, color: '#9B4FD0', glow: 0.3 },
     goal: { radius: 1.5, height: 6 }, // [M4a] default radius (SPEC §7 sample) and light-pillar height
     windmill: {
       torqueDecay: 0.85, // fraction of spin kept per SECOND (frame-rate independent reading)
       activateAt: 6.0, // rad/s to fire signal
       threshold: 12, // [M4a] default push force needed (SPEC §6.4); JSON may override per windmill
-      spinPerForce: 0.5, // [M4a PROVISIONAL] rad/s gained per unit of push force: one Gust (18) → 9 rad/s
+      spinPerForce: 0.5, // rad/s per unit of push force (one Gust → 9 rad/s). VP-approved 2026-09-27 (sandbox)
     },
     token: {
       spinRate: 1.4, // rad/s

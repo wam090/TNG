@@ -26,7 +26,7 @@ export class PlayerAbilities {
       applyImpulse: (j: THREE.Vector3): void => {
         this.controller.applyImpulse(j);
       },
-      pushCone: (e, range, coneDeg) => this.hooks.pushCone(e, range, coneDeg),
+      pushCone: (e, range, coneHalfDeg, debugShowFor) => this.hooks.pushCone(e, range, coneHalfDeg, debugShowFor),
       hitStop: (duration: number): void => {
         this.hooks.hitStop(duration);
       },

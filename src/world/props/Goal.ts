@@ -52,7 +52,7 @@ export class Goal implements Prop {
     return this.reached;
   }
 
-  pushTarget(): null {
+  pushBounds(): null {
     return null;
   }
 

@@ -54,7 +54,7 @@ export class Checkpoint implements Prop {
     return this.reached;
   }
 
-  pushTarget(): null {
+  pushBounds(): null {
     return null;
   }
 

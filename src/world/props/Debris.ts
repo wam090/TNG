@@ -3,6 +3,7 @@ import type { PushEvent } from '../../core/Events';
 import type { Materials } from '../../render/Materials';
 import { GIZMO_COLOR, setGizmoColor, wireBox } from '../PropGizmos';
 import type { DebrisData } from '../PropSchema';
+import type { PushBounds } from '../PushCone';
 import type { Vec3Tuple } from '../SchemaUtil';
 import { solidBox, type Prop, type PropContext } from './Prop';
 
@@ -49,9 +50,13 @@ export class Debris implements Prop {
     // Inert until pushed.
   }
 
-  pushTarget(): THREE.Vector3 | null {
+  pushBounds(): PushBounds | null {
     if (this.destroyed) return null;
-    return new THREE.Vector3(this.data.pos[0], this.data.pos[1] + PILE_SIZE[1] / 2, this.data.pos[2]);
+    const [w, h, d] = PILE_SIZE;
+    return {
+      box: new THREE.Box3(new THREE.Vector3(-w / 2, 0, -d / 2), new THREE.Vector3(w / 2, h, d / 2)),
+      frame: new THREE.Matrix4().makeTranslation(...this.data.pos),
+    };
   }
 
   onPush(e: PushEvent, ctx: PropContext): void {

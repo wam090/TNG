@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { TUNING } from '../../config/tuning';
-import type { Materials } from '../../render/Materials';
 import { GIZMO_COLOR, wireSphere } from '../PropGizmos';
 import type { ShardData } from '../PropSchema';
 import { clamp } from '../../core/Math';
@@ -20,11 +19,13 @@ export class Shard implements Prop {
   constructor(
     private readonly data: ShardData,
     private readonly scene: THREE.Scene,
-    materials: Materials,
   ) {
     this.id = data.id;
     const S = TUNING.props.shard;
-    this.mesh = new THREE.Mesh(new THREE.OctahedronGeometry(S.visualRadius), materials.get('accent'));
+    this.mesh = new THREE.Mesh(
+      new THREE.TetrahedronGeometry(S.visualRadius),
+      new THREE.MeshStandardMaterial({ color: S.color, emissive: S.color, emissiveIntensity: S.glow, roughness: 0.5, metalness: 0 }),
+    );
     this.centre = new THREE.Vector3(...data.pos);
     this.mesh.position.copy(this.centre);
     this.mesh.castShadow = true;
@@ -51,7 +52,7 @@ export class Shard implements Prop {
     return this.collected;
   }
 
-  pushTarget(): null {
+  pushBounds(): null {
     return null;
   }
 
@@ -66,5 +67,6 @@ export class Shard implements Prop {
   dispose(): void {
     this.scene.remove(this.mesh);
     this.mesh.geometry.dispose();
+    (this.mesh.material as THREE.Material).dispose();
   }
 }
