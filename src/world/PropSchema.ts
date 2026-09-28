@@ -5,7 +5,16 @@ import { asNumber, asRecord, asString, asVec3, fail, type Vec3Tuple } from './Sc
 // contact) for everything that stands or spans a volume; a shard's pos is its
 // floating centre. Omitted numbers fall back to TUNING, never to literals here.
 
-export interface WindmillData { type: 'windmill'; id: string; pos: Vec3Tuple; rotY: number; emits: string | null; threshold: number }
+export interface WindmillData {
+  type: 'windmill';
+  id: string;
+  pos: Vec3Tuple;
+  rotY: number;
+  emits: string | null;
+  threshold: number;
+  /** Optional VISUAL drive shaft from the windmill's base to this point (e.g. at a gate); turns with the rotor. */
+  shaftTo: Vec3Tuple | null;
+}
 export interface GateData { type: 'gate'; id: string; pos: Vec3Tuple; rotY: number; size: Vec3Tuple; listensTo: string[]; requireAll: boolean }
 export interface DebrisData { type: 'debris'; id: string; pos: Vec3Tuple; emits: string | null; threshold: number }
 export interface UpdraftData { type: 'updraft'; id: string; pos: Vec3Tuple; size: Vec3Tuple; listensTo: string[]; requireAll: boolean; force: number; velocity: number }
@@ -81,6 +90,7 @@ const PARSERS = {
     rotY: optNumber(o.rotY, c, 'rotY', 0),
     emits: optString(o.emits, c, 'emits'),
     threshold: optNumber(o.threshold, c, 'threshold', TUNING.props.windmill.threshold),
+    shaftTo: o.shaftTo === undefined ? null : asVec3(o.shaftTo, c, 'shaftTo'),
   }),
   gate: (o: Raw, id: string, c: string): GateData => ({
     type: 'gate',

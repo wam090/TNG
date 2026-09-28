@@ -2,7 +2,7 @@
   "name": "jump_arc",
   "steps": 240,
   "segments": [
-    { "from": 0, "until": 240, "hold": ["right"] },
+    { "from": 0, "until": 240, "hold": ["up", "right"] },
     { "from": 60, "until": 100, "hold": ["jump"] }
   ]
 }

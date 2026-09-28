@@ -18,7 +18,8 @@ export interface LevelEnv {
 }
 
 export interface LevelBlock {
-  type: 'box' | 'ramp';
+  /** 'fence': a waist-high railing whose collision fills the full box (an invisible barrier above the rail, WO-004 D1). */
+  type: 'box' | 'ramp' | 'fence';
   pos: Vec3Tuple;
   size: Vec3Tuple;
   rotY: number; // degrees
@@ -78,8 +79,8 @@ function parseBlock(raw: unknown, index: number): LevelBlock {
   const context = `blocks[${index.toFixed(0)}]`;
   const o = asRecord(raw, context);
   const type = asString(o.type, context, 'type');
-  if (type !== 'box' && type !== 'ramp') {
-    fail(context, `unknown type "${type}" (expected "box" or "ramp")`);
+  if (type !== 'box' && type !== 'ramp' && type !== 'fence') {
+    fail(context, `unknown type "${type}" (expected "box", "ramp" or "fence")`);
   }
   const mat = asString(o.mat, `${context} ("${type}")`, 'mat');
   if (!Materials.isName(mat)) {

@@ -8,6 +8,15 @@ import type { LevelBlock, LevelData } from './LevelSchema';
 
 const LIGHT_COLOR = 0xffffff; // untinted lights; the palette carries all colour
 
+// Fence = a camera-side boundary (WO-004 D1): a WAIST-HIGH railing you can see over,
+// whose collision rises to the block's full height — an invisible barrier above the
+// rail. Tall see-through bars were tried first and caged the bottom of every frame.
+// Structural geometry (like chassis proportions); posts run along the block's local X.
+const FENCE_RAIL_HEIGHT = 1.1;
+const FENCE_POST = 0.12;
+const FENCE_SPACING = 1.1;
+const FENCE_RAIL = 0.1;
+
 export interface BuiltLevel {
   group: THREE.Group;
   collider: Collider;
@@ -46,9 +55,37 @@ function wedgeGeometry(w: number, h: number, d: number): THREE.BufferGeometry {
   return geometry;
 }
 
+/** A waist-high railing at the BOTTOM of the block's box: posts along local X, two rails. */
+function fenceGeometry(w: number, h: number, d: number): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const posts = Math.max(2, Math.round(w / FENCE_SPACING) + 1);
+  const post = Math.min(FENCE_POST, d);
+  const rail = Math.min(FENCE_RAIL_HEIGHT, h);
+  const base = -h / 2; // bottom of the block's box
+  for (let i = 0; i < posts; i += 1) {
+    const g = new THREE.BoxGeometry(post, rail, post);
+    g.translate(-w / 2 + post / 2 + ((w - post) * i) / (posts - 1), base + rail / 2, 0);
+    parts.push(g);
+  }
+  for (const y of [base + rail - FENCE_RAIL / 2, base + rail / 2]) {
+    const rail = new THREE.BoxGeometry(w, FENCE_RAIL, post);
+    rail.translate(0, y, 0);
+    parts.push(rail);
+  }
+  const merged = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  return merged;
+}
+
 function blockGeometry(block: LevelBlock): THREE.BufferGeometry {
   const [w, h, d] = block.size;
+  if (block.type === 'fence') return fenceGeometry(w, h, d);
   return block.type === 'box' ? new THREE.BoxGeometry(w, h, d) : wedgeGeometry(w, h, d);
+}
+
+/** What the capsule collides with: a fence is solid across its whole box. */
+function collisionGeometry(block: LevelBlock, visual: THREE.BufferGeometry): THREE.BufferGeometry {
+  return block.type === 'fence' ? new THREE.BoxGeometry(...block.size) : visual;
 }
 
 /** Turns validated LevelData into meshes + environment + one merged static collider. */
@@ -71,9 +108,11 @@ export class LevelBuilder {
       group.add(mesh);
 
       // Collision copy: world-space positions only, no normals/uvs needed.
+      const source = collisionGeometry(block, geometry);
       const part = new THREE.BufferGeometry();
-      part.setAttribute('position', geometry.getAttribute('position').clone());
-      if (geometry.index) part.setIndex(geometry.index.clone());
+      part.setAttribute('position', source.getAttribute('position').clone());
+      if (source.index) part.setIndex(source.index.clone());
+      if (source !== geometry) source.dispose();
       part.applyMatrix4(mesh.matrix);
       if (part.index) {
         collisionParts.push(part.toNonIndexed());

@@ -7,7 +7,7 @@ import { Debug } from './core/Debug';
 import { EventBus } from './core/Events';
 import { Game } from './core/Game';
 import { installHarness } from './core/Harness';
-import { Input } from './core/Input';
+import { actionGlyph, Input } from './core/Input';
 import { Time } from './core/Time';
 import { TimeScale } from './core/TimeScale';
 import { ELEMENT_IDS } from './elements/ElementModule';
@@ -16,6 +16,7 @@ import { Player } from './player/Player';
 import { CameraRig } from './render/CameraRig';
 import { Materials } from './render/Materials';
 import { Renderer } from './render/Renderer';
+import { ActionPrompt } from './ui/ActionPrompt';
 import { FadeOverlay } from './ui/FadeOverlay';
 import { Hud } from './ui/Hud';
 import { installCoordPicker } from './world/CoordPicker';
@@ -31,6 +32,8 @@ const materials = new Materials();
 const registry = buildElementRegistry();
 const bus = new EventBus();
 const hud = new Hud();
+const input = new Input();
+const actionPrompt = new ActionPrompt(() => input.lastDevice, actionGlyph);
 const timeScale = new TimeScale();
 const pickupFx = new PickupFx(timeScale);
 // ?level=sandbox loads the DISPOSABLE M4a prop sandbox; default is level01.
@@ -54,7 +57,10 @@ const playerView = {
   },
 };
 player.setAbilityHooks({
-  pushCone: (e, range, coneHalfDeg, debugShowFor) => level.pushCone(e, range, coneHalfDeg, playerView, debugShowFor),
+  pushCone: (e, range, coneHalfDeg, debugShowFor) => {
+    actionPrompt.dismiss(); // the first push is the prompt's job done
+    return level.pushCone(e, range, coneHalfDeg, playerView, debugShowFor);
+  },
   hitStop: (duration) => {
     timeScale.push('hitStop', TUNING.elements.hitStopScale, duration);
   },
@@ -74,7 +80,7 @@ renderer.attachCamera(cameraRig.camera);
 
 const game = new Game({
   time: new Time(),
-  input: new Input(),
+  input,
   debug,
   renderer,
   cameraRig,
@@ -87,6 +93,7 @@ const game = new Game({
     {
       update: (dt: number): void => {
         level.update(dt, playerView);
+        actionPrompt.refresh();
       },
     },
   ],
@@ -99,6 +106,7 @@ bus.on('tokenPickup', ({ element }) => {
   player.addElement(module);
   hud.setSlot(module.bodyTint);
   pickupFx.trigger();
+  actionPrompt.show();
 });
 
 // Checkpoints move the respawn point (SPEC §6.3: respawn at the last checkpoint).

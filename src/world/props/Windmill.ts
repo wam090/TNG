@@ -17,6 +17,11 @@ const BLADE_COUNT = 4;
 const ROTOR_OFFSET = 0.3; // rotor sits in front of the tower, along local +Z
 const FULL_TURN = Math.PI * 2;
 const GIZMO_RADIUS = 0.35;
+// Drive shaft (visual only, WO-004 D2): a square rod with collars so its turning reads.
+const SHAFT_HEIGHT = 0.3; // above the windmill's base
+const SHAFT_ROD = 0.14;
+const SHAFT_COLLAR: [number, number, number] = [0.3, 0.3, 0.12];
+const SHAFT_COLLAR_SPACING = 1.2;
 
 /**
  * SPEC §6.4 Windmill. A push stronger than `threshold` adds spin (force ×
@@ -35,6 +40,8 @@ export class Windmill implements Prop {
   private turnAtSpeed = 0; // radians turned while omega >= activateAt
   private emitted = false;
   private readonly towerSolid: THREE.BufferGeometry;
+  private readonly shaft: THREE.Group | null = null;
+  private readonly shaftSpin = new THREE.Group();
 
   constructor(
     private readonly data: WindmillData,
@@ -64,11 +71,41 @@ export class Windmill implements Prop {
     });
     scene.add(this.root);
     this.towerSolid = solidBox(TOWER_SIZE, [0, HUB_HEIGHT / 2, 0], this.rootMatrix());
+    if (data.shaftTo) {
+      this.shaft = this.buildShaft(data.shaftTo, materials);
+      scene.add(this.shaft);
+    }
 
     this.gizmo = new THREE.Group();
     this.marker = wireSphere(GIZMO_RADIUS, GIZMO_COLOR.idle);
     this.gizmo.add(this.marker);
     this.gizmo.position.copy(this.hubWorld());
+  }
+
+  /** A rod from the base to `to`, spinning about its own axis (shaftSpin) with the rotor. */
+  private buildShaft(to: [number, number, number], materials: Materials): THREE.Group {
+    const from = new THREE.Vector3(this.data.pos[0], this.data.pos[1] + SHAFT_HEIGHT, this.data.pos[2]);
+    const span = new THREE.Vector3(...to).sub(from);
+    const length = span.length();
+    const shaft = new THREE.Group();
+    shaft.name = `shaft:${this.data.id}`;
+    shaft.position.copy(from);
+    shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), span.clone().normalize());
+    const metal = materials.get('metal');
+    const rod = new THREE.Mesh(new THREE.BoxGeometry(SHAFT_ROD, SHAFT_ROD, length), metal);
+    rod.position.z = length / 2;
+    this.shaftSpin.add(rod);
+    const collars = Math.max(1, Math.floor(length / SHAFT_COLLAR_SPACING));
+    for (let i = 1; i <= collars; i += 1) {
+      const collar = new THREE.Mesh(new THREE.BoxGeometry(...SHAFT_COLLAR), metal);
+      collar.position.z = (length * i) / (collars + 1);
+      this.shaftSpin.add(collar);
+    }
+    shaft.add(this.shaftSpin);
+    shaft.traverse((o) => {
+      o.castShadow = true;
+    });
+    return shaft;
   }
 
   private hubWorld(): THREE.Vector3 {
@@ -86,6 +123,7 @@ export class Windmill implements Prop {
     const turned = this.omega * dt;
     this.angle = (this.angle + turned) % FULL_TURN;
     this.rotor.rotation.z = this.angle;
+    this.shaftSpin.rotation.z = this.angle; // the shaft turns with the rotor
     this.turnAtSpeed = this.omega >= W.activateAt ? this.turnAtSpeed + turned : 0;
     if (!this.emitted && this.turnAtSpeed >= FULL_TURN) {
       this.emitted = true;
@@ -125,6 +163,12 @@ export class Windmill implements Prop {
 
   dispose(): void {
     this.towerSolid.dispose();
+    if (this.shaft) {
+      this.scene.remove(this.shaft);
+      this.shaft.traverse((o) => {
+        if (o instanceof THREE.Mesh) (o.geometry as THREE.BufferGeometry).dispose();
+      });
+    }
     this.scene.remove(this.root);
     this.root.traverse((o) => {
       if (o instanceof THREE.Mesh) (o.geometry as THREE.BufferGeometry).dispose();

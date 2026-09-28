@@ -1,0 +1,12 @@
+{
+  "name": "yard_chain",
+  "steps": 340,
+  "segments": [
+    { "from": 0, "until": 40, "hold": ["up"] },
+    { "from": 14, "until": 40, "hold": ["jump"] },
+    { "from": 75, "until": 78, "hold": ["up", "left"] },
+    { "from": 75, "until": 77, "hold": ["action"] },
+    { "from": 150, "until": 210, "hold": ["up"] },
+    { "from": 210, "until": 252, "hold": ["up", "right"] }
+  ]
+}

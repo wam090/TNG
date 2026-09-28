@@ -90,7 +90,7 @@ describe('parseLevel', () => {
 
   it('names the block and the problem on a bad type', () => {
     expect(() => parseLevel(level({ blocks: [box(), { ...box(), type: 'cylinder' }] }))).toThrow(
-      /blocks\[1\].*unknown type "cylinder".*"box" or "ramp"/,
+      /blocks\[1\].*unknown type "cylinder".*"box", "ramp" or "fence"/,
     );
   });
 

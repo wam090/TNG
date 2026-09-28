@@ -137,6 +137,21 @@ describe('Windmill (SPEC §6.4) — reacts to push FORCE, never to identity', ()
     expect(c.signals.isOn('sig')).toBe(false);
   });
 
+  it('an optional drive shaft (visual only) runs from the base to shaftTo and turns with the rotor', () => {
+    const scene = new THREE.Scene();
+    const wm = new Windmill(parseAs('windmill', { id: 'wm3', pos: [0, 0, 0], emits: 'sig', shaftTo: [0, 0.3, -6] }), scene, new Materials());
+    const shaft = scene.getObjectByName('shaft:wm3');
+    expect(shaft).toBeDefined();
+    const spin = shaft?.children[0];
+    wm.onPush(push(TUNING.wind.gust.force));
+    step(wm, propCtx(), 0.5);
+    expect(spin?.rotation.z).toBeGreaterThan(0);
+    // Not solid beyond the tower, not pushable beyond the machine: the shaft adds nothing to either.
+    const plain = new Windmill(parseAs('windmill', { id: 'wm4', pos: [0, 0, 0], emits: 'sig' }), new THREE.Scene(), new Materials());
+    expect(wm.pushBounds().box.equals(plain.pushBounds().box)).toBe(true);
+    expect(wm.solid().attributes.position?.count).toBe(plain.solid().attributes.position?.count);
+  });
+
   it('never emits if it never reaches activateAt (a low-threshold windmill, a weak push)', () => {
     const weak = parseAs('windmill', { id: 'wm2', pos: [0, 0, 0], emits: 'sig', threshold: 1 });
     const wm = new Windmill(weak, new THREE.Scene(), new Materials());

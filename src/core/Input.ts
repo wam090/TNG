@@ -11,6 +11,9 @@ export interface InputSnapshot {
   actionReleased: boolean;
 }
 
+/** Which kind of device produced the most recent input (drives prompt glyphs). */
+export type InputDevice = 'keyboard' | 'gamepad';
+
 /** Anything the sim can poll for input — real devices (Input) or a script (ScriptedInput). */
 export interface InputSource {
   poll(): InputSnapshot;
@@ -25,6 +28,19 @@ const KEYS_JUMP = ['Space'] as const;
 const KEYS_ACTION = ['KeyE'] as const;
 const PAD_JUMP_BUTTON = 0; // A / Cross
 const PAD_ACTION_BUTTON = 2; // X / Square
+// Standard-mapping face/shoulder labels (Xbox layout), indexed by button number —
+// how a prompt names a pad binding without hard-coding a letter anywhere else.
+const PAD_BUTTON_LABELS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT'] as const;
+/** Display label of a KeyboardEvent.code binding: 'KeyE' → 'E', 'Space' → 'Space'. */
+function keyLabel(code: string): string {
+  return code.replace(/^Key/, '').replace(/^Digit/, '');
+}
+
+/** The glyph for the ACTION binding on a device, derived from the bindings above. */
+export function actionGlyph(device: InputDevice): string {
+  return device === 'gamepad' ? PAD_BUTTON_LABELS[PAD_ACTION_BUTTON] : keyLabel(KEYS_ACTION[0]);
+}
+
 const GAME_KEYS: ReadonlySet<string> = new Set([
   ...KEYS_UP,
   ...KEYS_DOWN,
@@ -43,10 +59,14 @@ export class Input implements InputSource {
   private readonly down = new Set<string>();
   private prevJumpHeld = false;
   private prevActionHeld = false;
+  private device: InputDevice = 'keyboard';
 
   constructor() {
     window.addEventListener('keydown', (e) => {
-      if (GAME_KEYS.has(e.code)) e.preventDefault(); // Space scrolls, arrows pan
+      if (GAME_KEYS.has(e.code)) {
+        e.preventDefault(); // Space scrolls, arrows pan
+        this.device = 'keyboard';
+      }
       this.down.add(e.code);
     });
     window.addEventListener('keyup', (e) => {
@@ -67,6 +87,7 @@ export class Input implements InputSource {
     const pad = this.firstGamepad();
     if (pad) {
       const [px, py] = this.stickWithDeadzone(pad.axes[0] ?? 0, pad.axes[1] ?? 0);
+      if (px !== 0 || py !== 0 || pad.buttons.some((b) => b.pressed)) this.device = 'gamepad';
       x += px;
       y += py;
       jumpHeld ||= pad.buttons[PAD_JUMP_BUTTON]?.pressed ?? false;
@@ -91,6 +112,11 @@ export class Input implements InputSource {
     this.prevJumpHeld = jumpHeld;
     this.prevActionHeld = actionHeld;
     return snapshot;
+  }
+
+  /** The device of the most recent input (keyboard until a pad is actually used). */
+  get lastDevice(): InputDevice {
+    return this.device;
   }
 
   private anyDown(codes: readonly string[]): boolean {
