@@ -1,8 +1,8 @@
-ok   zip has index.html at its root (stillmote-2a57d0c.zip, 3 files)
+ok   zip has index.html at its root (stillmote-102df8c.zip, 3 files)
 ok   game loads inside an iframe from /html/0000000/
-ok   renders a frame (49 distinct colours in the embed, need ≥ 12)
+ok   renders a frame (50 distinct colours in the embed, need ≥ 12)
 ok   no console errors or exceptions in the embed
 ok   ?debug=1 shows the F1 stats overlay in the production build
-ok   F1 overlay names the build (2a57d0c)
+ok   F1 overlay names the build (102df8c)
 ok   no console errors or exceptions with ?debug=1
-preview:smoke passed — preview/stillmote-2a57d0c.zip boots from a subpath (frame: preview/smoke-embed.png)
+preview:smoke passed — preview/stillmote-102df8c.zip boots from a subpath (frame: preview/smoke-embed.png)
