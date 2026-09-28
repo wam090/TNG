@@ -15,7 +15,9 @@
     "lint": "eslint .",
     "shot": "node tools/shot.mjs",
     "shot:check": "node tools/shot-check.mjs",
-    "shot:bless": "node tools/shot-bless.mjs"
+    "shot:bless": "node tools/shot-bless.mjs",
+    "preview:zip": "node tools/preview-zip.mjs",
+    "preview:smoke": "node tools/preview-smoke.mjs"
   },
   "dependencies": {
     "three": "^0.185.1",

@@ -112,6 +112,7 @@ export class Debug {
     const v = s.velocity;
     const hSpeed = Math.hypot(v.x, v.z);
     this.stats.textContent =
+      `build        ${__BUILD_ID__}\n` +
       `fps          ${this.fps.toFixed(1)}\n` +
       `frame dt     ${ms(s.frameDt)} ms\n` +
       `sim steps    ${s.steps.toFixed(0)}\n` +

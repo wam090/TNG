@@ -44,12 +44,47 @@ npm run dev     # → http://localhost:5173
 | `npm run shot -- --script=idle --frames=0,60,120,240` | deterministic screenshot harness → `shots/` (`--debug` forces the overlay) |
 | `npm run shot:check` | pixel-diff `shots/` against blessed goldens in `shots/golden/` |
 | `npm run shot:bless` | promote current shots to goldens |
+| `npm run preview:zip` | clean production build → `preview/stillmote-<build>.zip` for itch.io (see below) |
+| `npm run preview:smoke` | builds the zip, serves it from an itch-like subpath, boots it headless, fails on any console error |
 
 First time only, for the harness on a fresh machine: `npx playwright install chromium`.
 
-**Debug keys:** `F1` stats overlay · `F2` collider wireframe · click anywhere =
-copy `[x, y, z]` of the hit point to the clipboard (level-authoring tool).
-Movement/jump arrive at M2.
+**Controls:** WASD / arrows move · Space jump (while falling, press again and
+hold to glide) · E Gust.
+
+**Debug keys:** `F1` stats overlay (shows the build hash) · `F2` collider
+wireframe · `F3` prop gizmos + the last Gust's reach wedge · `F4` grant/revoke
+the element · `F5` next checkpoint · in dev builds, click anywhere = copy
+`[x, y, z]` of the hit point (level-authoring tool). `?debug=1` opens with the
+F1 overlay on. `?level=sandbox` loads the disposable M4a prop sandbox.
+
+## Preview build (private — itch.io, Restricted)
+
+Builds go to a **restricted** itch.io page for playtesting from M4b onward.
+Nothing is ever made public before the full game's Release step (SPEC §8.7, §12).
+
+1. **Commit first.** The build id comes from git. An uncommitted tree gives a
+   `-dirty` id and the zip command warns about it.
+2. **Build and zip:** `npm run preview:zip` → `preview/stillmote-<build>.zip`
+   (index.html at the zip root). Needs the system `zip` command.
+3. **Optional check:** `npm run preview:smoke` boots that zip from an itch-like
+   subpath inside a 1280×720 iframe and fails on any console error. It needs
+   the system `unzip` command and saves the frame it saw to
+   `preview/smoke-embed.png`.
+4. **Upload** on itch.io: edit the project → *Kind of project*: **HTML** →
+   upload the zip → tick *This file will be played in the browser*.
+5. **Embed options:** viewport **1280 × 720** · **Fullscreen button** on ·
+   **Mobile friendly** on, orientation **Landscape**.
+6. **Visibility & access: Restricted.** Give testers access through itch.io's
+   restricted-page options. Never choose Public.
+7. **Which build is this?** Every build prints its commit hash as the first
+   line of the F1 overlay. Testers quote it with their notes.
+
+**On a phone (no F-keys):** open the embedded game's own URL — the `src` of
+the game's iframe, served from `html.itch.zone` — directly in the phone's
+browser and append `?debug=1` to get the stats overlay. (Not verified against
+a live itch.io page from here; if a direct load is refused, the overlay can
+still be opened on desktop with F1.)
 
 **Docs:** `SPEC.md` is the single source of truth. `CLAUDE.md` carries the hard
 rules for AI-assisted sessions. `DECISIONS.md` is the append-only log of every
