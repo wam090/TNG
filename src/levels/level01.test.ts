@@ -401,8 +401,8 @@ describe('Beats 0–3 end to end, and the camera never loses the player', () => 
   });
 
   it('on the whole Beats 0–3 critical path (full_run, incl. the column ride and the glide) the camera never loses him', () => {
-    // At most one of five body heights is ever hidden. Measured partial steps: dropping off the
-    // pillar's far side, the gateway, and a few steps passing the gate's east post.
+    // At most one of five body heights is ever hidden. Measured: ONE partial step on the whole
+    // path; the ride is fully visible for 89 steps and the glide for 57.
     const sim = makeSim();
     let worst = BODY.length;
     let partial = 0;
@@ -417,7 +417,7 @@ describe('Beats 0–3 end to end, and the camera never loses the player', () => 
       if (sim.player.state === 'glide') gliding += seen === BODY.length ? 1 : 0;
     });
     expect(worst).toBeGreaterThanOrEqual(BODY.length - 1);
-    expect(partial).toBeLessThanOrEqual(16);
+    expect(partial).toBeLessThanOrEqual(3);
     expect(riding).toBeGreaterThan(30); // fully visible through the ride…
     expect(gliding).toBeGreaterThan(30); // …and the glide
   });
