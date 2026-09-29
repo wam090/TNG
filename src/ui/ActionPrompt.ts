@@ -42,6 +42,12 @@ export class ActionPrompt {
     this.el.style.display = 'none';
   }
 
+  /** Replay: hidden, and armed to show again at the next pickup. */
+  reset(): void {
+    this.dismissed = false;
+    this.el.style.display = 'none';
+  }
+
   /** Once per sim step: follow the last-used device. */
   refresh(): void {
     const glyph = this.glyphFor(this.device());

@@ -31,15 +31,33 @@ const PAD_ACTION_BUTTON = 2; // X / Square
 // Standard-mapping face/shoulder labels (Xbox layout), indexed by button number —
 // how a prompt names a pad binding without hard-coding a letter anywhere else.
 const PAD_BUTTON_LABELS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT'] as const;
-/** Display label of a KeyboardEvent.code binding: 'KeyE' → 'E', 'Space' → 'Space'. */
+// Named keys get a symbol, never a word (SPEC pillar 3): Space is the visible-space sign.
+const NAMED_KEY_LABELS: Readonly<Record<string, string>> = { Space: '␣' };
+/** Display label of a KeyboardEvent.code binding: 'KeyE' → 'E', 'Space' → '␣'. */
 function keyLabel(code: string): string {
-  return code.replace(/^Key/, '').replace(/^Digit/, '');
+  return NAMED_KEY_LABELS[code] ?? code.replace(/^Key/, '').replace(/^Digit/, '');
 }
 
 /** The glyph for the ACTION binding on a device, derived from the bindings above. */
 export function actionGlyph(device: InputDevice): string {
   return device === 'gamepad' ? PAD_BUTTON_LABELS[PAD_ACTION_BUTTON] : keyLabel(KEYS_ACTION[0]);
 }
+
+/** The glyph for the JUMP binding on a device, derived from the bindings above. */
+export function jumpGlyph(device: InputDevice): string {
+  return device === 'gamepad' ? PAD_BUTTON_LABELS[PAD_JUMP_BUTTON] : keyLabel(KEYS_JUMP[0]);
+}
+
+/** No input at all: what the sim sees on a step whose input is withheld (the Level Complete card). */
+export const NO_INPUT: Readonly<InputSnapshot> = Object.freeze({
+  move: Object.freeze({ x: 0, y: 0 }),
+  jumpPressed: false,
+  jumpHeld: false,
+  jumpReleased: false,
+  actionPressed: false,
+  actionHeld: false,
+  actionReleased: false,
+});
 
 const GAME_KEYS: ReadonlySet<string> = new Set([
   ...KEYS_UP,

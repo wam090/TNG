@@ -8,12 +8,15 @@ import yardChainScript from '../../scripts/yard_chain.json';
 import { buildElementRegistry } from '../config/elements';
 import { TUNING } from '../config/tuning';
 import { EventBus } from '../core/Events';
+import { NO_INPUT, type InputSnapshot } from '../core/Input';
+import { LevelRun } from '../core/LevelRun';
 import { DEG2RAD } from '../core/Math';
 import { parseInputScript, ScriptedInput } from '../core/ScriptedInput';
 import { TimeScale } from '../core/TimeScale';
 import { Player } from '../player/Player';
 import { CameraRig } from '../render/CameraRig';
 import { Materials } from '../render/Materials';
+import { LevelComplete, type LevelCompleteView } from '../ui/LevelComplete';
 import { Level } from '../world/Level';
 import { LevelBuilder } from '../world/LevelBuilder';
 import { parseLevel } from '../world/LevelSchema';
@@ -170,14 +173,21 @@ describe('Still Yard — enclosure (no void, no sequence break)', () => {
 });
 
 // ── a tiny copy of Game's fixed step, driving the real Player + Level ───────
+// The run is built exactly as main.ts builds it: LevelRun.start() loads it, and
+// the Level Complete flow steps first on raw time and may withhold input.
 interface Sim {
+  scene: THREE.Scene;
   player: Player;
   level: Level;
   rig: CameraRig;
   ts: TimeScale;
-  occluders: THREE.Object3D[];
+  lc: LevelComplete;
+  /** Opaque-candidate level + prop objects (everything but the player's own). */
+  occluders: () => THREE.Object3D[];
   events: string[];
 }
+
+const nullView: LevelCompleteView = { draw: () => undefined, hide: () => undefined };
 
 function makeSim(): Sim {
   const scene = new THREE.Scene();
@@ -185,10 +195,11 @@ function makeSim(): Sim {
   const bus = new EventBus();
   const registry = buildElementRegistry();
   const level = new Level(scene, new LevelBuilder(materials), materials, noDebug, registry, bus);
-  level.load(level01);
-  const occluders = [...scene.children]; // level + props only; the player is added after
+  const beforePlayer = new Set(scene.children);
   const player = new Player(scene, () => level.collider);
+  const playerObjects = new Set(scene.children.filter((o) => !beforePlayer.has(o)));
   const ts = new TimeScale();
+  const rig = new CameraRig(16 / 9);
   const events: string[] = [];
   player.setAbilityHooks({
     pushCone: (e, r, c, d) => {
@@ -205,13 +216,20 @@ function makeSim(): Sim {
     ts.push('pickupDilation', D.scale, D.duration);
     events.push('pickup');
   });
-  bus.on('levelComplete', () => events.push('goal'));
-  const spawn = new THREE.Vector3(...data.spawn);
-  const hit = level.collider?.groundProbe(spawn);
-  player.spawnAt(new THREE.Vector3(spawn.x, hit?.point.y ?? 0, spawn.z));
-  const rig = new CameraRig(16 / 9);
+  const lc: LevelComplete = new LevelComplete(ts, nullView, () => '␣', () => {
+    levelRun.start();
+    events.push('replay');
+  });
+  bus.on('levelComplete', () => {
+    events.push('goal');
+    const sh = level.shards;
+    lc.complete({ shardsFound: sh.found, shardsTotal: sh.total, sky: level.skyColor });
+  });
+  const levelRun = new LevelRun(level, player, level01, [ts, lc, rig]);
+  levelRun.start();
   rig.update(player.position, player.velocity, 0);
-  return { player, level, rig, ts, occluders, events };
+  const occluders = (): THREE.Object3D[] => scene.children.filter((o) => !playerObjects.has(o));
+  return { scene, player, level, rig, ts, lc, occluders, events };
 }
 
 function viewOf(player: Player) {
@@ -224,17 +242,22 @@ function viewOf(player: Player) {
   };
 }
 
+/** One Game.update + stepManual's render-side sync, in Game's order. */
+function stepOnce(sim: Sim, polled: InputSnapshot): void {
+  const snap = sim.lc.step(DT, polled) ? NO_INPUT : polled;
+  sim.ts.update(DT);
+  const eff = DT * sim.ts.value;
+  sim.player.update(eff, DT, snap);
+  sim.level.update(eff, viewOf(sim.player));
+  sim.player.syncVisual(1);
+  sim.rig.update(sim.player.renderPosition, sim.player.velocity, DT);
+}
+
 function run(sim: Sim, script: unknown, onStep: (step: number) => void): void {
   const s = parseInputScript(script);
   const input = new ScriptedInput(s);
-  const view = viewOf(sim.player);
   for (let i = 0; i < s.steps; i += 1) {
-    const snap = input.poll();
-    sim.ts.update(DT);
-    const eff = DT * sim.ts.value;
-    sim.player.update(eff, DT, snap);
-    sim.level.update(eff, view);
-    sim.rig.update(sim.player.position, sim.player.velocity, DT);
+    stepOnce(sim, input.poll());
     onStep(i);
   }
 }
@@ -245,7 +268,7 @@ function visible(sim: Sim, point: THREE.Vector3, tolerance = 0.35): boolean {
   const dir = point.clone().sub(cam);
   const dist = dir.length();
   const ray = new THREE.Raycaster(cam, dir.normalize(), 0, dist);
-  for (const hit of ray.intersectObjects(sim.occluders, true)) {
+  for (const hit of ray.intersectObjects(sim.occluders(), true)) {
     let shown = true;
     for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) if (!o.visible) shown = false;
     const mat = (hit.object as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
@@ -340,5 +363,82 @@ describe('Still Yard — Beat 2 end to end, and the camera never loses the playe
       worst = Math.min(worst, seenOf(sim));
     });
     expect(worst).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// ── WO-005 Stage A: the Level Complete card's clock and replay ──────────────
+describe('Level Complete — the clock and the replay (WO-005 Stage A)', () => {
+  const JUMP_PRESS: InputSnapshot = { ...NO_INPUT, jumpPressed: true, jumpHeld: true };
+
+  it('the clock is raw fixed-step time from load to the Goal: pickup dilation and hit-stop do not shorten it', () => {
+    const sim = makeSim();
+    let goalStep = -1;
+    let slowed = 0;
+    run(sim, yardChainScript, (i) => {
+      if (sim.ts.value < 1 && goalStep < 0) slowed += 1;
+      if (goalStep < 0 && sim.events.includes('goal')) goalStep = i;
+    });
+    expect(slowed).toBeGreaterThan(0); // dilation and hit-stop both happened on the way
+    expect(goalStep).toBeGreaterThan(0);
+    expect(sim.lc.isShowing).toBe(true);
+    expect(sim.lc.elapsed).toBeCloseTo((goalStep + 1) * DT, 9);
+  });
+
+  it('the card freezes the sim and withholds input: held stick + Jump move nothing', () => {
+    const sim = makeSim();
+    run(sim, yardChainScript, () => undefined);
+    const at = sim.player.position.clone();
+    const held: InputSnapshot = { ...NO_INPUT, move: { x: 1, y: -1 }, jumpHeld: true, actionHeld: true };
+    for (let i = 0; i < 120; i += 1) stepOnce(sim, held);
+    expect(sim.player.position.toArray()).toEqual(at.toArray());
+    expect(sim.lc.isShowing).toBe(true); // held keys never replay
+  });
+
+  /** Everything a replay must put back: the whole scene graph, the body, the run's clocks, the camera. */
+  function digest(sim: Sim): unknown {
+    const objects: unknown[] = [];
+    sim.scene.traverse((o) => {
+      const mat = (o as Partial<THREE.Mesh>).material;
+      const color = mat && !Array.isArray(mat) && 'color' in mat ? (mat.color as THREE.Color).getHexString() : '';
+      objects.push([o.type, o.name, o.visible, ...o.position.toArray(), ...o.quaternion.toArray(), ...o.scale.toArray(), color]);
+    });
+    const p = sim.player;
+    return {
+      objects,
+      player: [...p.position.toArray(), ...p.velocity.toArray(), p.grounded, p.state, p.elementCount, p.tintHex, p.stats],
+      signals: sim.level.signals.list(),
+      shards: sim.level.shards,
+      runTime: sim.lc.elapsed,
+      card: sim.lc.isShowing,
+      timeScale: sim.ts.value,
+      camera: [...sim.rig.camera.position.toArray(), sim.rig.camera.fov],
+    };
+  }
+
+  it('Jump after the hold replays — and a replay leaves exactly what a fresh load leaves, with the same future', () => {
+    const played = makeSim();
+    run(played, yardChainScript, () => undefined);
+    expect(played.player.elementCount).toBe(1);
+    expect(played.level.signals.list()).toEqual(['sig_gate_yard']);
+    while (!played.lc.accepting) stepOnce(played, NO_INPUT);
+    stepOnce(played, JUMP_PRESS);
+    expect(played.events.at(-1)).toBe('replay');
+
+    const fresh = makeSim();
+    stepOnce(fresh, NO_INPUT); // the replay step is the new run's first step
+    expect(digest(played)).toEqual(digest(fresh));
+
+    // Same future, step for step: the whole chain again, compared every 10 steps and at the end.
+    const a: unknown[] = [];
+    const b: unknown[] = [];
+    run(played, yardChainScript, (i) => {
+      if (i % 10 === 0) a.push(digest(played));
+    });
+    run(fresh, yardChainScript, (i) => {
+      if (i % 10 === 0) b.push(digest(fresh));
+    });
+    expect(a).toEqual(b);
+    expect(digest(played)).toEqual(digest(fresh));
+    expect(played.lc.isShowing).toBe(true); // the second run reached the Goal too
   });
 });

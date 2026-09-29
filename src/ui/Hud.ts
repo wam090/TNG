@@ -23,4 +23,9 @@ export class Hud {
     this.slot.style.background = colorHex ?? 'transparent';
     this.slot.style.borderColor = colorHex ? FILLED_BORDER : EMPTY_BORDER;
   }
+
+  /** Replay: the slot is empty again. */
+  reset(): void {
+    this.setSlot(null);
+  }
 }

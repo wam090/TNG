@@ -82,3 +82,25 @@ describe('TimeScale — the one slow-motion mechanism', () => {
     expect(ts.value).toBe(1);
   });
 });
+
+describe('TimeScale release/reset (WO-005: the Level Complete freeze and replay)', () => {
+  it('an open-ended freeze holds until released, then only the other sources count', () => {
+    const ts = new TimeScale();
+    ts.push('levelComplete', 0, Infinity);
+    ts.push('pickupDilation', 0.25, 20);
+    for (let i = 0; i < 600; i += 1) ts.update(DT); // 10 s: the dilation is still running
+    expect(ts.value).toBe(0);
+    ts.release('levelComplete');
+    expect(ts.value).toBe(0.25);
+  });
+
+  it('reset drops every source', () => {
+    const ts = new TimeScale();
+    ts.push('levelComplete', 0, Infinity);
+    ts.push('hitStop', 0, 1);
+    ts.reset();
+    expect(ts.value).toBe(1);
+    expect(ts.isActive('levelComplete')).toBe(false);
+    expect(ts.isActive('hitStop')).toBe(false);
+  });
+});

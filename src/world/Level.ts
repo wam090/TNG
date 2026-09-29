@@ -12,6 +12,7 @@ import { pushHits, pushReach } from './PushCone';
 import { PushGizmo, type PushGizmoTarget } from './PushGizmo';
 import type { Prop, PropContext, PropPlayerView } from './props/Prop';
 import { createProp } from './props/PropFactory';
+import { Shard } from './props/Shard';
 import { Token } from './props/Token';
 import { LevelParseError } from './SchemaUtil';
 import { Signals } from './Signals';
@@ -41,6 +42,7 @@ export class Level {
   private props: Prop[] = [];
   private solidKey = '';
   private levelId = '';
+  private sky = '';
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -67,6 +69,7 @@ export class Level {
     this.disposeContent();
 
     this.levelId = data.id;
+    this.sky = data.env.sky;
     this.built = this.builder.build(data, this.scene);
     this.signals.reset();
 
@@ -191,6 +194,17 @@ export class Level {
   /** Respawn points of every checkpoint, in JSON order (F5 cycles through these). */
   get checkpoints(): THREE.Vector3[] {
     return this.props.filter((p): p is Checkpoint => p instanceof Checkpoint).map((c) => c.respawn);
+  }
+
+  /** Shards taken so far, of those placed in the level (the Level Complete card's row). */
+  get shards(): { found: number; total: number } {
+    const all = this.props.filter((p): p is Shard => p instanceof Shard);
+    return { found: all.filter((s) => s.isCollected).length, total: all.length };
+  }
+
+  /** The level's sky colour (the Level Complete fade goes toward it). */
+  get skyColor(): string {
+    return this.sky;
   }
 
   get spawn(): THREE.Vector3 | null {

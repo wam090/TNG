@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { TUNING } from '../config/tuning';
 import type { Debug } from './Debug';
-import type { InputSource } from './Input';
+import { NO_INPUT, type InputSnapshot, type InputSource } from './Input';
 import { Rng } from './Rng';
 import type { Time } from './Time';
 import type { TimeScale } from './TimeScale';
@@ -16,6 +16,16 @@ export interface Updatable {
   update(dt: number): void;
 }
 
+/**
+ * The run's clock and end-of-level gate (ui/LevelComplete). Stepped first each
+ * fixed step on RAW dt; returning true withholds that step's input from the sim.
+ */
+export interface RunFlow {
+  step(rawDt: number, snap: InputSnapshot): boolean;
+  /** Raw seconds of the current run (F1). */
+  readonly elapsed: number;
+}
+
 export interface GameParts {
   time: Time;
   input: InputSource;
@@ -27,6 +37,7 @@ export interface GameParts {
   timeScale: TimeScale;
   fade?: FadeOverlay;
   pickupFx?: PickupFx;
+  flow?: RunFlow;
   updatables?: Updatable[];
 }
 
@@ -154,10 +165,12 @@ export class Game {
    * One fixed step. Slow-motion (pickup dilation, hit-stop) is ONLY a scale
    * on the dt handed to sim consumers — the fixed step and the accumulator
    * never see it, so harness runs stay deterministic through every window.
-   * TimeScale, PickupFx and the input poll tick on RAW step time.
+   * TimeScale, PickupFx, the run flow and the input poll tick on RAW step time.
    */
   private update(dt: number): void {
-    const snap = this.inputSource.poll();
+    const polled = this.inputSource.poll();
+    const withheld = this.parts.flow?.step(dt, polled) ?? false;
+    const snap = withheld ? NO_INPUT : polled;
     this.parts.timeScale.update(dt);
     this.parts.pickupFx?.update(dt);
     const effDt = dt * this.parts.timeScale.value;
@@ -182,6 +195,7 @@ export class Game {
       grounded: p.grounded,
       state: p.state,
       safetyCapHits: p.safetyCapHits,
+      runTime: this.parts.flow?.elapsed ?? 0,
     };
   }
 }

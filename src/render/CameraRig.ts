@@ -31,6 +31,14 @@ export class CameraRig {
 
   private lastFovOffset = 0;
 
+  /** Replay: the next update snaps to the target (as on the first frame) at the base FOV. */
+  reset(): void {
+    this.initialised = false;
+    this.lastFovOffset = 0;
+    this.camera.fov = TUNING.camera.fov;
+    this.camera.updateProjectionMatrix();
+  }
+
   /** fovOffset: sim-computed punch offset (pickup moment); 0 in normal play. */
   update(focusTarget: THREE.Vector3, velocity: THREE.Vector3, dt: number, fovOffset = 0): void {
     const C = TUNING.camera;

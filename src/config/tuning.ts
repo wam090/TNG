@@ -150,6 +150,14 @@ export const TUNING = {
 
   // ── [M0+] sections below. scaffold.* dies at M1 when the level pipeline lands. ──
 
+  ui: {
+    // [WO-005] The Level Complete moment (pulled forward from M6). All PROVISIONAL for the VP.
+    //  fadeTime: s for the screen to fade toward the level's sky colour (and the card to come in).
+    //  holdBeforeInput: s after the Goal before Jump/Action can replay — a held key can't skip the card.
+    //  fadeOpacity: how far "toward" the sky the fade goes (1 = the world is gone). Menu 0.7 / 0.85 / 1.0.
+    levelComplete: { fadeTime: 0.5, holdBeforeInput: 0.6, fadeOpacity: 0.85 },
+  },
+
   render: {
     maxPixelRatio: 2,
     shadow: { mapSize: 2048, bias: -0.0005 }, // [M2+] directional shadow for grounding

@@ -34,4 +34,14 @@ export class TimeScale {
   isActive(source: string): boolean {
     return this.sources.has(source);
   }
+
+  /** End one named source early (the Level Complete freeze has no natural end). */
+  release(source: string): void {
+    this.sources.delete(source);
+  }
+
+  /** Replay: no source survives into the new run. */
+  reset(): void {
+    this.sources.clear();
+  }
 }

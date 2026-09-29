@@ -38,12 +38,14 @@ export class Player {
   private readonly baseStats: PlayerStats = { ...TUNING.player.baseStats };
   private readonly loadout: ElementModule[] = [];
   private tags: Tag[] = [];
-  private readonly abilities: PlayerAbilities;
+  // Rebuilt (not rewound) by reset(), so no hidden timer or channel survives a replay.
+  private abilities: PlayerAbilities;
+  private hooks: AbilityHooks | null = null;
   private readonly socketRig: SocketRig;
-  private readonly controller: CharacterController;
+  private controller: CharacterController;
   private readonly chassis: Chassis;
-  private readonly stateMachine = new PlayerStateMachine();
-  private readonly anim = new ProcAnim();
+  private stateMachine = new PlayerStateMachine();
+  private anim = new ProcAnim();
   private readonly blob: THREE.Mesh;
   private readonly spawn = new THREE.Vector3();
 
@@ -93,7 +95,26 @@ export class Player {
   }
 
   setAbilityHooks(hooks: AbilityHooks): void {
+    this.hooks = hooks;
     this.abilities.setHooks(hooks);
+  }
+
+  /** Replay (WO-005): exactly what the constructor left — a plain body at rest, no element — at `feet`. */
+  reset(feet: THREE.Vector3): void {
+    this.socketRig.detachAll();
+    this.loadout.length = 0;
+    this.stats = { ...this.baseStats };
+    this.tags = [];
+    this.controller = new CharacterController(this.getCollider);
+    this.abilities = new PlayerAbilities(this.controller);
+    if (this.hooks) this.abilities.setHooks(this.hooks);
+    this.stateMachine = new PlayerStateMachine();
+    this.anim = new ProcAnim();
+    this.chassis.material.color.set(CHASSIS_BASE_COLOR);
+    this.tintT = 1;
+    this.prevYaw = this.currYaw = 0;
+    this.fadeTimer = this.lastVy = 0;
+    this.spawnAt(feet);
   }
 
   /** Move only the respawn point (level hot-reload keeps the player in place). */

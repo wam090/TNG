@@ -13,6 +13,7 @@ export interface DebugFrameStats {
   grounded: boolean;
   state: string;
   safetyCapHits: number;
+  runTime: number;
 }
 
 const PANEL_CSS =
@@ -121,7 +122,8 @@ export class Debug {
       `vel          h ${hSpeed.toFixed(2)}  y ${v.y.toFixed(2)}\n` +
       `grounded     ${s.grounded ? 'yes' : 'no'}\n` +
       `state        ${s.state}\n` +
-      `speed cap    ${s.safetyCapHits.toFixed(0)} hits (limit ${TUNING.player.maxSpeedSafety.toFixed(0)} m/s)`;
+      `speed cap    ${s.safetyCapHits.toFixed(0)} hits (limit ${TUNING.player.maxSpeedSafety.toFixed(0)} m/s)\n` +
+      `run time     ${s.runTime.toFixed(2)} s (raw; stops at the Goal)`;
 
     const substep =
       s.substepCapHits > 0

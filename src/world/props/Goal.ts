@@ -11,7 +11,7 @@ const PILLAR_SEGMENTS = 24;
 
 /**
  * SPEC §6.4 Goal: walk into the pillar → the level is complete (reported
- * once; the Level Complete card is M6). Trigger: within `radius`
+ * once; ui/LevelComplete shows the card — WO-005). Trigger: within `radius`
  * horizontally, feet between the pillar's base and top.
  */
 export class Goal implements Prop {

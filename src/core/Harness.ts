@@ -15,7 +15,16 @@ export interface StillmoteHarness {
   /** Install a scripted input timeline (parsed scripts/*.json content). */
   input(script: unknown): void;
   /** JSON-serialisable snapshot of sim state (+ level state), for assertions and debugging. */
-  state(): GameSnapshot & { signals: string[] };
+  state(): GameSnapshot & HarnessLevelState;
+}
+
+/** Level-side state the harness reports next to the sim snapshot. */
+export interface HarnessLevelState {
+  signals: string[];
+  /** Raw run seconds (stops at the Goal). */
+  runTime: number;
+  /** The Level Complete card is up. */
+  cardUp: boolean;
 }
 
 declare global {
@@ -24,7 +33,7 @@ declare global {
   }
 }
 
-export function installHarness(game: Game, signals: () => string[]): void {
+export function installHarness(game: Game, levelState: () => HarnessLevelState): void {
   window.__stillmote = {
     step: (n: number): void => {
       game.stepManual(n);
@@ -35,6 +44,6 @@ export function installHarness(game: Game, signals: () => string[]): void {
     input: (script: unknown): void => {
       game.setInputSource(new ScriptedInput(parseInputScript(script)));
     },
-    state: () => ({ ...game.snapshot(), signals: signals() }),
+    state: () => ({ ...game.snapshot(), ...levelState() }),
   };
 }

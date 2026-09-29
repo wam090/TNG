@@ -28,6 +28,11 @@ export class PickupFx {
     this.fovTimer += rawDt;
   }
 
+  /** Replay: back to idle (its dilation lives in TimeScale, which resets itself). */
+  reset(): void {
+    this.fovTimer = Infinity;
+  }
+
   /** FOV offset envelope: base → base+delta over inTime, back over outTime. */
   get fovOffset(): number {
     const P = TUNING.elements.fovPunch;

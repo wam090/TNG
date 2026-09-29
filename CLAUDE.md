@@ -125,6 +125,12 @@ If you believe an anti-goal is necessary, say so explicitly and stop. Do not bui
 8. Every handback updates `STATUS.md`.
 9. Reference the WO number in every commit message.
 
+### Work orders and git — the one way (VP decision, 2026-09-29)
+- Work orders arrive **pasted by the VP**. The Developer saves each one verbatim as `Claude outputs/WO-NNN.md`, commits it, then executes it.
+- The **only** working branch is `claude/great-albattani-oqw1u0`. `dev` and `main` are stale: never read work orders from them, never push to them.
+- Every handback updates STATUS.md, pushes, and republishes the STILLMOTE Playtest link.
+- The VP runs no git steps.
+
 ### Never
 - Never refactor code outside the milestone's scope without asking first. If you see something worth refactoring, **write it down in `DECISIONS.md` and move on.**
 - Never rename existing public interfaces without asking.
@@ -156,4 +162,4 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`WO-004 — M4a close-out · decision record · private preview pipeline · M4b unit 1 (Beats 0–2, the Still Yard).` Done when: Gust reach is measured to prop bounds (±0.1 m agreement, tested) with a ±45° provisional cone and an F3 wedge; the Shard is a non-element violet tetrahedron; the VP's 2026-09-27 decisions are in SPEC/CLAUDE/DECISIONS; one command builds an itch.io zip, a scripted smoke test boots the production build from a subpath, `?debug=1` works in production and F1 shows the build hash; level01 is the Still Yard (enclosed, no void, no sequence break — tested; spawn frame shows windmill, shaft, gate and Core), with the windmill shaft, the Beat 2 action-glyph prompt and a `yard_chain` harness script; all gates + shot:check green. Stop before Beat 3.
+`WO-005 — M4b unit 2: Beat 3, the Vent Court · minimal Level Complete card.` Done when: reaching the Goal freezes the sim through TimeScale, fades toward the level's sky and shows a wordless card (done glyph, clock + m:ss.s raw run time, shard row when the level has shards, Jump-glyph replay prompt after the hold); replay is a full reset tested identical to a fresh load; a card golden exists; the Vent Court is entered through the yard's gate past a checkpoint, stays visible by layout (raycast test over the whole Beats 0–3 path), has no void, cannot be sequence-broken (tested), and is reachable by updraft + glide with a stated margin; the Goal sits on the ledge; `vent_court` and a full-run script exist; all gates + shot:check green. Stop before Beat 4.

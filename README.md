@@ -50,7 +50,8 @@ npm run dev     # → http://localhost:5173
 First time only, for the harness on a fresh machine: `npx playwright install chromium`.
 
 **Controls:** WASD / arrows move · Space jump (while falling, press again and
-hold to glide) · E Gust.
+hold to glide) · E Gust. On the Level Complete card, Space or E replays the
+level from a fresh start.
 
 **Debug keys:** `F1` stats overlay (shows the build hash) · `F2` collider
 wireframe · `F3` prop gizmos + the last Gust's reach wedge · `F4` grant/revoke

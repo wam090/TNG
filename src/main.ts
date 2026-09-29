@@ -7,7 +7,8 @@ import { Debug } from './core/Debug';
 import { EventBus } from './core/Events';
 import { Game } from './core/Game';
 import { installHarness } from './core/Harness';
-import { actionGlyph, Input } from './core/Input';
+import { actionGlyph, Input, jumpGlyph } from './core/Input';
+import { LevelRun } from './core/LevelRun';
 import { Time } from './core/Time';
 import { TimeScale } from './core/TimeScale';
 import { ELEMENT_IDS } from './elements/ElementModule';
@@ -19,6 +20,8 @@ import { Renderer } from './render/Renderer';
 import { ActionPrompt } from './ui/ActionPrompt';
 import { FadeOverlay } from './ui/FadeOverlay';
 import { Hud } from './ui/Hud';
+import { LevelComplete } from './ui/LevelComplete';
+import { LevelCompleteCard } from './ui/LevelCompleteCard';
 import { installCoordPicker } from './world/CoordPicker';
 import { Level } from './world/Level';
 import { LevelBuilder } from './world/LevelBuilder';
@@ -41,8 +44,6 @@ const LEVELS: Record<string, unknown> = { '01': level01Json, level01: level01Jso
 const levelName = new URLSearchParams(window.location.search).get('level') ?? 'level01';
 const levelJson = LEVELS[levelName] ?? level01Json;
 const level = new Level(scene, new LevelBuilder(materials), materials, debug, registry, bus);
-level.load(levelJson);
-
 const player = new Player(scene, () => level.collider);
 // Props see the player only as a position and a force path — never its loadout.
 const playerView = {
@@ -65,18 +66,36 @@ player.setAbilityHooks({
     timeScale.push('hitStop', TUNING.elements.hitStopScale, duration);
   },
 });
-function spawnPlayer(): void {
-  const spawn = level.spawn;
-  if (!spawn) return;
-  const hit = level.collider?.groundProbe(spawn);
-  const feet = hit ? new THREE.Vector3(spawn.x, hit.point.y, spawn.z) : spawn.clone();
-  player.spawnAt(feet);
-}
-spawnPlayer();
 
 const renderer = new Renderer(app);
 const cameraRig = new CameraRig(renderer.aspect);
 renderer.attachCamera(cameraRig.camera);
+
+// The Level Complete card (WO-005) and the run it ends. Replay is LevelRun.start() —
+// the very call that loads the level below — so a replay IS a fresh load.
+let checkpointIndex = -1; // F5's position in the checkpoint cycle
+const levelComplete = new LevelComplete(
+  timeScale,
+  new LevelCompleteCard(),
+  () => jumpGlyph(input.lastDevice),
+  () => {
+    run.start();
+  },
+);
+const run = new LevelRun(level, player, levelJson, [
+  timeScale,
+  pickupFx,
+  levelComplete,
+  hud,
+  actionPrompt,
+  cameraRig,
+  {
+    reset: (): void => {
+      checkpointIndex = -1;
+    },
+  },
+]);
+run.start();
 
 const game = new Game({
   time: new Time(),
@@ -89,6 +108,7 @@ const game = new Game({
   timeScale,
   fade: new FadeOverlay(),
   pickupFx,
+  flow: levelComplete,
   updatables: [
     {
       update: (dt: number): void => {
@@ -114,6 +134,11 @@ bus.on('checkpoint', ({ feet }) => {
   player.setSpawn(feet);
 });
 
+bus.on('levelComplete', () => {
+  const shards = level.shards;
+  levelComplete.complete({ shardsFound: shards.found, shardsTotal: shards.total, sky: level.skyColor });
+});
+
 // F4 (CLAUDE.md rule 10): grant/revoke the first registered element for testing.
 debug.registerToggle('F4', (on) => {
   if (on) {
@@ -128,7 +153,6 @@ debug.registerToggle('F4', (on) => {
 
 // F5 (CLAUDE.md rule 10): each press teleports to the NEXT checkpoint (JSON order,
 // wrapping) and makes it the respawn point.
-let checkpointIndex = -1;
 debug.registerPress('F5', () => {
   const points = level.checkpoints;
   if (points.length === 0) return;
@@ -147,12 +171,9 @@ if (import.meta.hot) {
   import.meta.hot.accept(['./levels/level01.json', './levels/sandbox.json'], ([l01, sbx]) => {
     const raw: unknown = levelJson === sandboxJson ? sbx?.default : l01?.default;
     if (raw !== undefined && level.tryReload(raw)) {
-      // Keep the player where they stand; only the respawn point follows the JSON.
-      const spawn = level.spawn;
-      if (spawn) {
-        const hit = level.collider?.groundProbe(spawn);
-        player.setSpawn(hit ? new THREE.Vector3(spawn.x, hit.point.y, spawn.z) : spawn);
-      }
+      // Keep the player where they stand; the respawn point and the next replay follow the JSON.
+      run.setSource(raw);
+      player.setSpawn(run.spawnFeet());
     }
   });
 }
@@ -161,7 +182,11 @@ if (import.meta.hot) {
 // the real-time loop — the harness drives the sim by exact fixed steps.
 const harnessMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has('harness');
 if (harnessMode) {
-  installHarness(game, () => level.signals.list());
+  installHarness(game, () => ({
+    signals: level.signals.list(),
+    runTime: levelComplete.elapsed,
+    cardUp: levelComplete.isShowing,
+  }));
 } else {
   game.start();
 }
