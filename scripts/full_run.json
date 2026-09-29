@@ -1,0 +1,21 @@
+{
+  "name": "full_run",
+  "steps": 720,
+  "segments": [
+    { "from": 0, "until": 40, "hold": ["up"] },
+    { "from": 14, "until": 40, "hold": ["jump"] },
+    { "from": 75, "until": 78, "hold": ["up", "left"] },
+    { "from": 75, "until": 77, "hold": ["action"] },
+    { "from": 150, "until": 210, "hold": ["up"] },
+    { "from": 210, "until": 252, "hold": ["up", "right"] },
+    { "from": 252, "until": 282, "hold": ["right"] },
+    { "from": 290, "until": 296, "hold": ["up", "right"] },
+    { "from": 298, "until": 300, "hold": ["action"] },
+    { "from": 320, "until": 340, "hold": ["right"] },
+    { "from": 322, "until": 335, "hold": ["jump"] },
+    { "from": 340, "until": 348, "hold": ["up", "right"] },
+    { "from": 455, "until": 580, "hold": ["up", "right"] },
+    { "from": 505, "until": 562, "hold": ["jump"] },
+    { "from": 590, "until": 620, "hold": ["right"] }
+  ]
+}

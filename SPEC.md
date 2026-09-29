@@ -389,6 +389,8 @@ Vent Court. A floor vent is choked with debris. Gust the debris → the vent eru
 
 The rotor deploys at the crown. The player sees their body physically change shape mid-air. That's your "morph" payoff, delivered as a *reward for a verb*.
 
+*As built (WO-005, M4b unit 2):* the court lies north of the yard, behind the gate. The yard's far wall east of the gate is cut to a rail, so the court stays in view from this camera. The court is one open level (y = 0). The vent is a debris-choked grate on a 1 m plinth, and the column is the §6.4 12 m. The ledge is a 6 m terrace along the court's north cliff, 10 m from the column's edge. **Gliding is required:** riding without it falls 1.9 m short, and a glide carries 18.5 m. The court is sealed to 16 m (cliffs, plus invisible collision above its rails and the gate), so a glide in any direction lands back in the court. The checkpoint sits just past the gate. The Goal stands on the ledge, which is where Beat 4 starts. (The crown rotor is M5.)
+
 **BEAT 4 — TWIST (2:45–4:00). Teaches: the power has a cost. ← THE MOST IMPORTANT BEAT IN THE GAME.**
 
 A narrow bridge, y=6, over nothing. A **wind zone** blows across it perpendicular to your path, in pulses (4s cycle: 1.6s gust, warning telegraph 0.6s before).

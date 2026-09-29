@@ -1,5 +1,6 @@
 // Deterministic screenshot harness.
 //   npm run shot -- --script=idle --frames=0,60,120,240 [--level=sandbox] [--keys=F3,F2] [--debug]
+// A script's optional "setupKeys" (e.g. ["F4", "F5"]) are pressed before stepping.
 // Boots a vite dev server, opens the game in headless Chromium with
 // ?harness=1, drives it via window.__stillmote.step() (exact fixed sim
 // steps — no rAF, no wall clock), and writes shots/<script>_<frame>.png.
@@ -89,6 +90,9 @@ page.on('console', (m) => {
 const levelQuery = level ? `&level=${encodeURIComponent(level)}` : '';
 await page.goto(`${url}?harness=1${levelQuery}${debug ? '&debug=1' : ''}`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__stillmote !== undefined);
+// A script may declare its start state as debug keys (e.g. F4 grant + F5 teleport to the
+// first checkpoint: vent_court starts at Beat 3). Part of the script, so its shots are blessable.
+for (const key of scriptJson.setupKeys ?? []) await page.keyboard.press(key);
 // Debug keys (F3 gizmos, F2 colliders…) for eyeballing — never used for goldens.
 for (const key of keys) await page.keyboard.press(key);
 await page.evaluate(

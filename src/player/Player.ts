@@ -99,7 +99,7 @@ export class Player {
     this.abilities.setHooks(hooks);
   }
 
-  /** Replay (WO-005): exactly what the constructor left — a plain body at rest, no element — at `feet`. */
+  /** Replay (WO-005): what the constructor left — a plain body at rest, no element — at `feet`. `position`/`velocity` are NEW vectors afterwards: read them through the getters, never cache them. */
   reset(feet: THREE.Vector3): void {
     this.socketRig.detachAll();
     this.loadout.length = 0;

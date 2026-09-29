@@ -1,0 +1,15 @@
+{
+  "name": "vent_court",
+  "setupKeys": ["F4", "F5"],
+  "steps": 420,
+  "segments": [
+    { "from": 0, "until": 6, "hold": ["up", "right"] },
+    { "from": 8, "until": 10, "hold": ["action"] },
+    { "from": 30, "until": 50, "hold": ["right"] },
+    { "from": 32, "until": 45, "hold": ["jump"] },
+    { "from": 50, "until": 58, "hold": ["up", "right"] },
+    { "from": 165, "until": 290, "hold": ["up", "right"] },
+    { "from": 215, "until": 272, "hold": ["jump"] },
+    { "from": 300, "until": 330, "hold": ["right"] }
+  ]
+}
