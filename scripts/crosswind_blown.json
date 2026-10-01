@@ -1,0 +1,6 @@
+{
+  "name": "crosswind_blown",
+  "setupKeys": ["F4", "F5", "F5"],
+  "steps": 240,
+  "segments": [{ "from": 132, "until": 170, "hold": ["down", "right"] }]
+}

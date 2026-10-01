@@ -1,6 +1,6 @@
 {
   "name": "full_run",
-  "steps": 720,
+  "steps": 1180,
   "segments": [
     { "from": 0, "until": 40, "hold": ["up"] },
     { "from": 14, "until": 40, "hold": ["jump"] },
@@ -16,6 +16,9 @@
     { "from": 340, "until": 348, "hold": ["up", "right"] },
     { "from": 455, "until": 580, "hold": ["up", "right"] },
     { "from": 505, "until": 562, "hold": ["jump"] },
-    { "from": 590, "until": 620, "hold": ["right"] }
+    { "from": 590, "until": 601, "hold": ["right"] },
+    { "from": 601, "until": 721, "hold": ["down", "right"] },
+    { "from": 740, "until": 818, "hold": ["down", "right"] },
+    { "from": 980, "until": 1080, "hold": ["down", "right"] }
   ]
 }

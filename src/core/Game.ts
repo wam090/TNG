@@ -104,6 +104,7 @@ export class Game {
       cameraRig.update(player.renderPosition, player.velocity, 0, this.parts.pickupFx?.fovOffset ?? 0);
       debug.frame(this.debugStats(0, 0, false));
     }
+    this.parts.fade?.set(player.fadeOpacity); // the respawn fade shows in harness frames too (WO-006)
     renderer.render(scene, cameraRig.camera);
   }
 

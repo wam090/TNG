@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import pickupScript from '../../scripts/pickup.json';
 import runEastScript from '../../scripts/run_east.json';
 import fullRunScript from '../../scripts/full_run.json';
+import crosswindBlownScript from '../../scripts/crosswind_blown.json';
+import crosswindCounterScript from '../../scripts/crosswind_counter.json';
+import crosswindTimedScript from '../../scripts/crosswind_timed.json';
 import ventCourtScript from '../../scripts/vent_court.json';
 import yardChainScript from '../../scripts/yard_chain.json';
 import { buildElementRegistry } from '../config/elements';
@@ -23,6 +26,7 @@ import { LevelComplete, type LevelCompleteView } from '../ui/LevelComplete';
 import { Level } from '../world/Level';
 import { LevelBuilder } from '../world/LevelBuilder';
 import { parseLevel } from '../world/LevelSchema';
+import type { WindZoneData } from '../world/PropSchema';
 import { createProp } from '../world/props/PropFactory';
 import level01 from './level01.json';
 
@@ -38,15 +42,18 @@ function beat3() {
   const debris = data.props.find((p) => p.type === 'debris');
   const goal = data.props.find((p) => p.type === 'goal');
   if (updraft?.type !== 'updraft' || debris?.type !== 'debris' || goal?.type !== 'goal') throw new Error('Beat 3 changed');
-  // The ledge: the block the Goal stands on.
+  // The ledge: the terrace across the court's north side, 14 m north of the vent, at Beat 4's
+  // height (the Goal moved on to the bridge's far end in WO-006).
+  const LEDGE_TOP = 6;
+  const probe = { x: updraft.pos[0], z: updraft.pos[2] - 14 };
   const ledge = data.blocks.find(
     (b) =>
-      Math.abs(b.pos[1] + b.size[1] / 2 - goal.pos[1]) < 1e-6 &&
-      Math.abs(goal.pos[0] - b.pos[0]) <= b.size[0] / 2 &&
-      Math.abs(goal.pos[2] - b.pos[2]) <= b.size[2] / 2,
+      Math.abs(b.pos[1] + b.size[1] / 2 - LEDGE_TOP) < 1e-6 &&
+      Math.abs(probe.x - b.pos[0]) <= b.size[0] / 2 &&
+      Math.abs(probe.z - b.pos[2]) <= b.size[2] / 2,
   );
-  if (!ledge) throw new Error('the Goal is not on a ledge');
-  return { updraft, debris, goal, ledge, top: goal.pos[1], front: ledge.pos[2] + ledge.size[2] / 2 };
+  if (!ledge) throw new Error('no ledge north of the vent');
+  return { updraft, debris, goal, ledge, top: LEDGE_TOP, front: ledge.pos[2] + ledge.size[2] / 2 };
 }
 const B3 = beat3();
 const VENT = { x: B3.updraft.pos[0], base: B3.updraft.pos[1], z: B3.updraft.pos[2], half: B3.updraft.size[2] / 2 };
@@ -180,7 +187,7 @@ describe('Still Yard + Vent Court — enclosure on foot (no void, no sequence br
     expect(f.hitVoid).toBe(false);
     expect(f.reached.has(cellOf(cp.pos[0], cp.pos[2]))).toBe(true);
     expect(f.reached.has(cellOf(VENT.x, VENT.z + 2))).toBe(true); // the plinth's top
-    expect(f.reachesGoal).toBe(false); // the Goal is on the ledge: updraft + glide only
+    expect(f.reachesGoal).toBe(false); // the Goal is beyond the ledge and the bridge
   });
 
   it('every boundary top clears the highest reachable feet height by the margin', () => {
@@ -250,7 +257,10 @@ function makeSim(atCheckpoint = false, json: unknown = level01): Sim {
     levelRun.start();
     events.push('replay');
   });
-  bus.on('checkpoint', () => events.push('checkpoint'));
+  bus.on('checkpoint', ({ feet }) => {
+    player.setSpawn(feet); // as main.ts: the respawn point follows the last checkpoint
+    events.push('checkpoint');
+  });
   const keycap = { visible: false, dismissed: false };
   const glide = new GlidePrompt({
     show: () => {
@@ -407,23 +417,26 @@ describe('Beats 0–3 end to end, and the camera never loses the player', () => 
     ).length;
   };
 
-  it('full_run: all four beats, spawn → Core → windmill → gate → checkpoint → vent → ride → glide → ledge → Goal', () => {
+  it('full_run: Beats 0–4, spawn → Core → windmill → gate → vent → ride → glide → ledge → bridge → Goal', () => {
     const sim = makeSim();
     run(sim, fullRunScript, () => undefined);
-    expect(sim.events.filter((e) => e !== 'gust')).toEqual(['pickup', 'checkpoint', 'goal']);
+    expect(sim.events.filter((e) => e !== 'gust')).toEqual(['pickup', 'checkpoint', 'checkpoint', 'goal']);
     expect(sim.events.filter((e) => e === 'gust')).toHaveLength(2);
     expect(sim.level.signals.list()).toEqual(['sig_gate_yard', 'sig_vent_court']);
     expect(sim.lc.isShowing).toBe(true);
-    expect(sim.player.position.y).toBeCloseTo(B3.top, 6); // he walked into the Goal on the ledge
+    expect(sim.player.position.y).toBeCloseTo(B3.top, 6); // he walked into the Goal at the bridge's far end
+    expect(sim.player.position.x).toBeGreaterThan(B3.goal.pos[0] - B3.goal.radius);
     expect(sim.player.safetyCapHits).toBe(0);
   });
 
-  it('vent_court (from the Beat 3 checkpoint, as F4 + F5): Gust → ride → glide → ledge → Goal', () => {
+  it('vent_court (from the Beat 3 checkpoint, as F4 + F5): Gust → ride → glide → onto the ledge', () => {
     const sim = makeSim(true);
     run(sim, ventCourtScript, () => undefined);
-    expect(sim.events.filter((e) => e !== 'gust')).toEqual(['checkpoint', 'goal']);
+    expect(sim.events.filter((e) => e !== 'gust')).toEqual(['checkpoint']);
     expect(sim.level.signals.list()).toEqual(['sig_vent_court']);
-    expect(sim.lc.isShowing).toBe(true);
+    expect(sim.player.grounded).toBe(true);
+    expect(sim.player.position.y).toBeCloseTo(B3.top, 6); // standing on the ledge
+    expect(sim.player.position.z).toBeLessThan(B3.front);
     expect(sim.player.safetyCapHits).toBe(0);
   });
 
@@ -575,7 +588,9 @@ describe('Vent Court — Beat 3 (WO-005 Stage B)', () => {
       const q = sim.player.position;
       apex = Math.max(apex, q.y);
       if (crossTop === null && py >= B3.top && q.y < B3.top) crossTop = Math.hypot(q.x - VENT.x, q.z - VENT.z);
-      if (q.x < COURT.minX || q.x > COURT.maxX || q.z < COURT.minZ || q.z > COURT.maxZ || q.y < -0.01) left = true;
+      const inCourt = q.x >= COURT.minX && q.x <= COURT.maxX && q.z >= COURT.minZ && q.z <= COURT.maxZ;
+      const onBridgehead = q.x >= COURT.maxX && q.x <= BRIDGEHEAD.maxX && q.z >= COURT.minZ && q.z <= BRIDGEHEAD.maxZ && q.y > B3.top - 0.01;
+      if ((!inCourt && !onBridgehead) || q.y < -0.01) left = true;
       if (q.y > VENT.base + 1) airborne = true;
       if (airborne && sim.player.grounded) break;
     }
@@ -584,6 +599,8 @@ describe('Vent Court — Beat 3 (WO-005 Stage B)', () => {
   // The court's interior (inside its cliffs and rails), from the JSON's walls.
   // (the south side is the rail on the old far-wall line; the gate opening under it leads home)
   const COURT = { minX: -6, maxX: 10, minZ: -32, maxZ: -8.65 };
+  // WO-006: the ledge continues east through the court's rail onto Beat 4's sheltered bridgehead.
+  const BRIDGEHEAD = { maxX: 17, maxZ: -27 };
   const onLedge = (p: THREE.Vector3): boolean => Math.abs(p.y - B3.top) < 1e-6 && p.z <= B3.front;
   const NORTH = { x: 0, z: -1 };
   // The same court with the ledge and its cliff removed: how far a glide carries in open air.
@@ -603,7 +620,7 @@ describe('Vent Court — Beat 3 (WO-005 Stage B)', () => {
     expect(cp.pos[2]).toBeLessThan(gate.pos[2]); // on the court side
     const sim = makeSim();
     run(sim, fullRunScript, () => undefined);
-    expect(sim.events).toEqual(['pickup', 'gust', 'checkpoint', 'gust', 'goal']);
+    expect(sim.events).toEqual(['pickup', 'gust', 'checkpoint', 'gust', 'checkpoint', 'goal']);
   });
 
   it('the choked vent: debris sits on the updraft grate, the column listens to it, and stays shut until it goes', () => {
@@ -615,9 +632,10 @@ describe('Vent Court — Beat 3 (WO-005 Stage B)', () => {
     expect(sim.player.position.y).toBeCloseTo(VENT.base, 3); // no lift while choked
   });
 
-  it('the Goal is on the ledge, at Beat 4\'s starting height (SPEC Beat 4: y = 6)', () => {
+  it('the ledge is Beat 4\'s starting height (SPEC Beat 4: y = 6); the Goal has moved on past it', () => {
     expect(B3.top).toBe(6);
     expect(B3.goal.pos[1]).toBe(B3.top);
+    expect(B3.goal.pos[0]).toBeGreaterThan(B3.ledge.pos[0] + B3.ledge.size[0] / 2); // east of the ledge
   });
 
   it('no sequence break: without the updraft the highest reachable point stays below the ledge', () => {
@@ -649,7 +667,7 @@ describe('Vent Court — Beat 3 (WO-005 Stage B)', () => {
     expect(available / needed).toBeGreaterThan(1.5); // measured: 18.5 m of glide for a 10 m gap (1.85×)
   });
 
-  it('no void: a glide from the column top in ANY of 16 directions lands back in the court or on the ledge', () => {
+  it('no void: a glide from the column top in ANY of 16 directions lands back in the court, on the ledge or the bridgehead', () => {
     let apex = 0;
     for (let k = 0; k < 16; k += 1) {
       const a = (k / 16) * Math.PI * 2;
@@ -721,5 +739,287 @@ describe('Glide prompt in the Vent Court (WO-006 Stage A)', () => {
     expect(sim.events.at(-1)).toBe('replay');
     expect(sim.glide.isDone).toBe(false);
     expect(sim.keycap.visible).toBe(false);
+  });
+});
+
+// ── WO-006 Stage B: Beat 4, the Crosswind Bridge ────────────────────────────
+describe('Crosswind Bridge — Beat 4 (WO-006 Stage B)', () => {
+  const zones = data.props.filter((p): p is WindZoneData => p.type === 'windZone');
+  const bridgeCp = data.props.find((p) => p.type === 'checkpoint' && p.pos[1] === B3.top);
+  // The deck: the long, narrow block at the ledge's height.
+  const deck = data.blocks.find(
+    (b) => b.type === 'box' && b.pos[1] + b.size[1] / 2 === B3.top && b.size[0] >= 10 && b.size[2] <= 1.5,
+  );
+  if (!bridgeCp || !deck || zones.length !== 2) throw new Error('Beat 4 changed');
+  const DECK = {
+    minX: deck.pos[0] - deck.size[0] / 2,
+    maxX: deck.pos[0] + deck.size[0] / 2,
+    minZ: deck.pos[2] - deck.size[2] / 2,
+    maxZ: deck.pos[2] + deck.size[2] / 2,
+  };
+  const Z = zones[0] ?? zones[1];
+  if (!Z) throw new Error('no zone');
+  const BASE = TUNING.player.baseStats;
+  const R = TUNING.player.radius;
+  const FALL_LINE = bridgeCp.pos[1] - TUNING.player.respawnDrop; // the fast-fail line at the bridge checkpoint
+
+  /** At the bridge checkpoint with Wind, as the crosswind scripts' F4 + F5 + F5. */
+  function bridgeSim(json: unknown = level01): Sim {
+    const sim = makeSim(true, json);
+    const cp = sim.level.checkpoints[1];
+    if (cp) sim.player.spawnAt(cp);
+    return sim;
+  }
+  /** World seconds → the zones' phase (both zones start together and share the SPEC timing). */
+  const phaseAt = (t: number): 'calm' | 'telegraph' | 'gust' => {
+    const p = t % Z.period;
+    return p >= Z.period - Z.duration ? 'gust' : p >= Z.period - Z.duration - Z.telegraph ? 'telegraph' : 'calm';
+  };
+  /** Run a script; report falls, respawns and phases (world time = raw time here: no pickup, no hits). */
+  function crosswind(script: unknown, json: unknown = level01) {
+    const sim = bridgeSim(json);
+    let fellAt = -1;
+    let leftDeckAt = -1;
+    let respawnAt = -1;
+    let gustSteps = 0;
+    let onSpanThroughGust = true;
+    let prev = sim.player.position.clone();
+    run(sim, script, (i) => {
+      const p = sim.player.position;
+      const world = (i + 1) * DT;
+      if (fellAt < 0 && p.y < B3.top - 0.01) fellAt = i;
+      if (leftDeckAt < 0 && !sim.player.grounded && p.y < B3.top - 0.01) leftDeckAt = i;
+      if (respawnAt < 0 && p.distanceTo(prev) > 2) respawnAt = i;
+      if (phaseAt(world) === 'gust') {
+        gustSteps += 1;
+        if (p.y < B3.top - 0.01) onSpanThroughGust = false;
+      }
+      prev = p.clone();
+    });
+    return { sim, fellAt, leftDeckAt, respawnAt, gustSteps, onSpanThroughGust };
+  }
+
+  it('the B8 mass rule, at the fixed 60 Hz step: braced fully into the wind, Wind drifts and a plain body holds', () => {
+    // One continuous zone (no pulse) with the level's force on open ground; brace straight into it.
+    const field = {
+      id: 'b8', name: 'b8', version: 1, spawn: [0, 1, 0], tokens: [],
+      blocks: [{ type: 'box', pos: [0, -0.5, 0], size: [400, 1, 400], mat: 'stone' }],
+      props: [{ type: 'windZone', id: 'z', pos: [0, 0, 0], size: [400, 6, 400], dir: Z.dir, force: Z.force, period: 1, duration: 1, telegraph: 0 }],
+    };
+    const into = new THREE.Vector3(...Z.dir).normalize().negate();
+    const r = inputToWorld(1, 0);
+    const d = inputToWorld(0, 1);
+    const det = r.x * d.z - r.z * d.x;
+    const brace = { x: (into.x * d.z - into.z * d.x) / det, y: (r.x * into.z - r.z * into.x) / det };
+    const along = new THREE.Vector3(...Z.dir).normalize();
+    const terminal = (wind: boolean, input: { x: number; y: number }): number => {
+      const sim = makeSim(false, field);
+      if (wind) sim.player.addElement(buildElementRegistry().get('wind'));
+      let sum = 0;
+      for (let i = 0; i < 360; i += 1) {
+        stepOnce(sim, { ...NO_INPUT, move: input });
+        if (i >= 300) sum += sim.player.velocity.dot(along);
+      }
+      return sum / 60;
+    };
+    const windBraced = terminal(true, brace);
+    const baseBraced = terminal(false, brace);
+    expect(windBraced).toBeGreaterThan(0.5); // still carried with the wind, bracing fully (measured ≈ 1.8 m/s)
+    expect(baseBraced).toBeLessThan(-0.5); // the plain body walks into it (measured ≈ −1.1 m/s)
+    // The window from the SIMULATED terminal speed (≈ 2 % above F / (m·drag) at 60 Hz).
+    const windFree = terminal(true, { x: 0, y: 0 });
+    const perForce = (windFree * WIND.mass) / Z.force; // terminal speed × mass, per unit force
+    const lo = (WIND.mass * WIND.moveSpeed) / perForce;
+    const hi = (BASE.mass * BASE.moveSpeed) / perForce;
+    expect(lo).toBeCloseTo(10.58, 1);
+    expect(hi).toBeCloseTo(15.92, 1);
+    expect(Z.force).toBeGreaterThan(lo);
+    expect(Z.force).toBeLessThan(hi);
+    expect(Math.abs(Z.force - (lo + hi) / 2)).toBeLessThan(0.05); // starts at the midpoint (PROVISIONAL)
+    for (const z of zones) expect(z.force).toBe(Z.force);
+  });
+
+  it('SPEC pulse and generous timing: each exposed span takes ≤ 60 % of the 2.4 s no-force window at Wind walk speed', () => {
+    for (const z of zones) {
+      expect([z.period, z.duration, z.telegraph]).toEqual([4.0, 1.6, 0.6]);
+      const span = z.size[0];
+      const window = z.period - z.duration; // calm + telegraph
+      expect(span / WIND.moveSpeed).toBeLessThanOrEqual(0.6 * window); // measured: 6 m / 7.2 m/s = 0.83 s = 35 %
+    }
+  });
+
+  it('timed crossing (crosswind_timed): span A after a gust, wait in the shelter, span B → Goal; never leaves the deck', () => {
+    const c = crosswind(crosswindTimedScript);
+    expect(c.fellAt).toBe(-1);
+    expect(c.sim.events).toEqual(['checkpoint', 'goal']);
+    expect(c.sim.lc.isShowing).toBe(true);
+  });
+
+  it('the liability is real (crosswind_blown): walking on during a gust blows him off → respawn at the bridge checkpoint ≤ 1.0 s', () => {
+    const c = crosswind(crosswindBlownScript);
+    expect(c.leftDeckAt).toBeGreaterThan(0);
+    expect(phaseAt((c.leftDeckAt + 1) * DT)).toBe('gust');
+    expect(c.respawnAt).toBeGreaterThan(c.leftDeckAt);
+    expect((c.respawnAt - c.leftDeckAt) * DT).toBeLessThanOrEqual(1.0); // measured 0.38 s
+    expect(c.sim.player.position.toArray()).toEqual(bridgeCp.pos);
+  });
+
+  it('fast fail holds when he glides too: from dropping below the deck to the fade ≤ 1.0 s, gliding all the way', () => {
+    // Blown off as in crosswind_blown; from then on he presses Jump on every fall and holds it (a
+    // coyote jump first, if the timing gives him one, then the glide). "Leaving the bridge" is the
+    // last step his feet are at deck height before the respawn.
+    const sim = bridgeSim();
+    const input = new ScriptedInput(parseInputScript(crosswindBlownScript));
+    let blown = false;
+    let atDeck = -1;
+    let respawn = -1;
+    let glided = false;
+    let prevJump = false;
+    for (let i = 0; i < 600 && respawn < 0; i += 1) {
+      const before = sim.player.position.clone();
+      const snap = input.poll();
+      const jumpHeld = blown && sim.player.velocity.y < 0;
+      stepOnce(sim, blown ? { ...NO_INPUT, jumpHeld, jumpPressed: jumpHeld && !prevJump } : snap);
+      prevJump = jumpHeld;
+      const p = sim.player.position;
+      if (!blown && !sim.player.grounded && p.y < B3.top - 0.01) blown = true;
+      if (p.distanceTo(before) > 2) respawn = i;
+      else if (p.y >= B3.top - 0.01) atDeck = i;
+      if (sim.player.state === 'glide') glided = true;
+    }
+    expect(glided).toBe(true);
+    expect(respawn).toBeGreaterThan(atDeck);
+    expect((respawn - atDeck) * DT).toBeLessThanOrEqual(1.0); // measured ≈ 0.8 s
+  });
+
+  it('the counter (crosswind_counter): a mid-air Gust aimed WITH the wind keeps him on the span through a full gust', () => {
+    const c = crosswind(crosswindCounterScript);
+    expect(c.gustSteps).toBeGreaterThanOrEqual(Math.round(Z.duration / DT) - 1); // the run spans a whole gust
+    expect(c.onSpanThroughGust).toBe(true);
+    expect(c.fellAt).toBe(-1);
+    // …and it is the Gust that does it: the same inputs without the Gust press are blown off.
+    const noGust = {
+      ...crosswindCounterScript,
+      segments: crosswindCounterScript.segments.map((g) => ({ ...g, hold: g.hold.filter((b) => b !== 'action') })),
+    };
+    expect(crosswind(noGust).fellAt).toBeGreaterThan(0);
+  });
+
+  it('the counter aims WITH the wind: the recoil goes the other way, into it', () => {
+    const sim = bridgeSim();
+    const aims: THREE.Vector3[] = [];
+    sim.player.setAbilityHooks({
+      pushCone: (e) => {
+        aims.push(e.dir.clone());
+        return 0;
+      },
+      hitStop: () => undefined,
+    });
+    run(sim, crosswindCounterScript, () => undefined);
+    const wind = new THREE.Vector3(...Z.dir).normalize();
+    expect(aims.length).toBeGreaterThan(0);
+    for (const a of aims) expect(a.dot(wind)).toBeGreaterThan(0.9);
+  });
+
+  it('no sequence break: the wind covers the whole deck width and every reachable height over each exposed span', () => {
+    const topReach = B3.top + WIND.jumpHeight + TUNING.player.height / 2; // highest body centre above the deck
+    for (const z of zones) {
+      const [x, y, zz] = z.pos;
+      const [w, h, d] = z.size;
+      expect(y).toBe(B3.top);
+      expect(y + h).toBeGreaterThan(topReach + 0.25); // no jumping over it
+      expect(zz - d / 2).toBeLessThanOrEqual(DECK.minZ - R); // the full width, plus the body
+      expect(zz + d / 2).toBeGreaterThanOrEqual(DECK.maxZ + R);
+      expect(x - w / 2).toBeGreaterThanOrEqual(DECK.minX - 1e-6);
+      expect(x + w / 2).toBeLessThanOrEqual(DECK.maxX + 1e-6);
+    }
+    // Nothing else stands between the bridgehead and the far platform: no way round, no stepping stone.
+    const between = blockSolids().filter((b) => b.min.x < DECK.maxX - 0.5 && b.max.x > DECK.minX + 0.5);
+    const walkable = between.filter((b) => b.max.y > FALL_LINE && b.max.y <= B3.top + WIND.jumpHeight);
+    for (const b of walkable) {
+      expect(b.max.y).toBeCloseTo(B3.top, 6); // only the deck and the shelter nook, both at deck height
+      expect(b.min.z).toBeGreaterThanOrEqual(DECK.minZ - 1); // and both on the bridge line
+    }
+  });
+
+  it('no sequence break: no glide line under the bridge (fast fail), and the bridgehead funnels everyone onto the deck', () => {
+    // Step off the deck's side at the start of span A in a calm, then glide due east under it
+    // (down+right on the stick) for as long as he can: the fast-fail line takes him first.
+    const sim = bridgeSim();
+    sim.player.spawnAt(new THREE.Vector3(DECK.minX + 0.5, B3.top, (DECK.minZ + DECK.maxZ) / 2));
+    let prevJump = false;
+    let respawned = false;
+    let maxX = 0;
+    for (let i = 0; i < 300 && !respawned; i += 1) {
+      const before = sim.player.position.clone();
+      const under = sim.player.position.y < B3.top - 0.01;
+      const jumpHeld = under && sim.player.velocity.y < 0;
+      const move = under ? { x: Math.SQRT1_2, y: Math.SQRT1_2 } : { x: -Math.SQRT1_2, y: Math.SQRT1_2 }; // east : south
+      stepOnce(sim, { ...NO_INPUT, move, jumpHeld, jumpPressed: jumpHeld && !prevJump });
+      prevJump = jumpHeld;
+      if (under) maxX = Math.max(maxX, sim.player.position.x);
+      if (sim.player.position.distanceTo(before) > 2) respawned = true;
+    }
+    expect(respawned).toBe(true);
+    expect(maxX).toBeLessThan(DECK.minX + 6); // ≈ 5 m of glide at most: nowhere near the far platform
+    expect(maxX).toBeLessThan(DECK.maxX - 6);
+    // The funnel: along the bridgehead's north and south edges, walking east is stopped, never a fall.
+    for (const z of [-31.5, -27.5]) {
+      const f = bridgeSim();
+      f.player.spawnAt(new THREE.Vector3(14, B3.top, z));
+      for (let i = 0; i < 120; i += 1) stepOnce(f, { ...NO_INPUT, move: { x: Math.SQRT1_2, y: Math.SQRT1_2 } });
+      expect(f.player.position.y).toBeCloseTo(B3.top, 3);
+      expect(f.player.position.x).toBeLessThan(DECK.minX);
+    }
+  });
+
+  it('visibility: blown off, he stays in view (≥ 4 of 5 body heights) all the way down to the fade', () => {
+    const sim = bridgeSim();
+    const BODYH = [0.15, 0.45, 0.75, 1.05, 1.28];
+    let worst = 5;
+    let prev = sim.player.position.clone();
+    let done = false;
+    run(sim, crosswindBlownScript, () => {
+      if (done) return;
+      const p = sim.player.position;
+      if (p.distanceTo(prev) > 2) done = true; // the respawn: the fade starts here
+      else worst = Math.min(worst, BODYH.filter((h) => visible(sim, new THREE.Vector3(p.x, p.y + h, p.z), 0.05)).length);
+      prev = p.clone();
+    });
+    expect(done).toBe(true);
+    expect(worst).toBeGreaterThanOrEqual(4);
+  });
+
+  it('readable: a telegraph before every gust, its haze in view from where he waits; the deck is narrow, with no rails', () => {
+    for (const z of zones) expect(z.telegraph).toBeGreaterThan(0);
+    for (let t = 0; t < 3 * Z.period; t += DT) {
+      if (phaseAt(t) === 'gust' && phaseAt(t - DT) !== 'gust') expect(phaseAt(t - DT)).toBe('telegraph');
+    }
+    // Span A's haze from the bridge checkpoint; span B's from the shelter.
+    const sim = bridgeSim();
+    for (let i = 0; i < 30; i += 1) stepOnce(sim, NO_INPUT);
+    const views: [THREE.Vector3, WindZoneData | undefined][] = [
+      [new THREE.Vector3(...bridgeCp.pos), zones[0]],
+      [new THREE.Vector3((DECK.minX + DECK.maxX) / 2, B3.top, -29.6), zones[1]],
+    ];
+    for (const [stand, z] of views) {
+      if (!z) throw new Error('zone');
+      sim.player.spawnAt(stand);
+      for (let i = 0; i < 60; i += 1) sim.rig.update(sim.player.position, new THREE.Vector3(), DT);
+      sim.rig.camera.updateMatrixWorld();
+      const centre = new THREE.Vector3(z.pos[0], z.pos[1] + 1, z.pos[2]);
+      const ndc = centre.clone().project(sim.rig.camera);
+      expect(Math.abs(ndc.x)).toBeLessThan(0.95);
+      expect(Math.abs(ndc.y)).toBeLessThan(0.95);
+      expect(visible(sim, centre)).toBe(true);
+    }
+    expect(deck.size[2]).toBeLessThanOrEqual(2 * (2 * R)); // 1.2 m: under two body-widths
+    const railsOnDeck = data.blocks.filter((b) => b.type === 'fence' && b.pos[0] > DECK.minX + 0.5 && b.pos[0] < DECK.maxX - 0.5);
+    expect(railsOnDeck).toEqual([]);
+  });
+
+  it('the Goal waits at the bridge\'s far end (Beat 5\'s start), past the last span, at the bridge\'s height', () => {
+    expect(B3.goal.pos[1]).toBe(B3.top);
+    for (const z of zones) expect(B3.goal.pos[0] - B3.goal.radius).toBeGreaterThan(z.pos[0] + z.size[0] / 2);
   });
 });

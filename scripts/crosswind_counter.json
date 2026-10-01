@@ -1,0 +1,15 @@
+{
+  "name": "crosswind_counter",
+  "setupKeys": ["F4", "F5", "F5"],
+  "steps": 340,
+  "segments": [
+    { "from": 0, "until": 37, "hold": ["down", "right"] },
+    { "from": 150, "until": 162, "hold": ["up", "right"] },
+    { "from": 168, "until": 204, "hold": ["up", "right"] },
+    { "from": 204, "until": 210, "hold": ["up", "right", "jump"] },
+    { "from": 210, "until": 228, "hold": ["up", "right"] },
+    { "from": 228, "until": 234, "hold": ["down", "left", "action"] },
+    { "from": 234, "until": 246, "hold": ["up", "right"] },
+    { "from": 276, "until": 282, "hold": ["up", "right"] }
+  ]
+}

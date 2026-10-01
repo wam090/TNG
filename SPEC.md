@@ -405,6 +405,13 @@ This is where the game becomes a game. It plants Earth (`mass 2.0`, immovable) y
 
 If you build only one thing from this document, build Beat 4.
 
+*As built (WO-006, M4b unit 3):*
+- **Layout.** The ledge continues east through an opening in the Vent Court's rail onto a sheltered bridgehead. The bridge checkpoint sits there, and rails funnel the way onto the deck. The deck is a 1.2 m-wide, 15 m-long plank at y = 6 over nothing. It has two exposed 6 m spans with a walled shelter nook between them, and ends on a far platform where the Goal waits (Beat 5's start).
+- **Wind.** It blows across the deck toward the camera, so being blown off reads as falling out of the screen. Each span has its own zone with the §6.4 pulse (4.0 s period, 1.6 s gust, 0.6 s telegraph) at force 13.25, the midpoint of the B8 window (PROVISIONAL).
+- **Timing.** At Wind walk speed a span takes 0.83 s, 35 % of the 2.4 s calm.
+- **Fast fail.** Falling 2.5 m below the active checkpoint respawns at it (`player.respawnDrop`). That is 0.38 s from leaving the deck, or 0.8 s if he glides.
+- **Solution 2, the counter.** He must Gust *with* the wind (toward the camera), not into it. The recoil goes opposite the aim, so a Gust aimed into the wind would throw him off faster. The working technique is to feather into the wind, jump when about to go over, and Gust with the wind in mid-air.
+
 **BEAT 5 — Test (4:00–5:30). Combines everything.**
 
 A three-part sequence, no new mechanics:
@@ -662,6 +669,7 @@ export const TUNING = {
     groundSnapDist: 0.25,
     maxSlopeDeg: 48,
     respawnFallY: -20,
+    respawnDrop: 2.5,      // WO-006: fall this far below the active checkpoint → respawn (PROVISIONAL)
     respawnFade: 0.18,
     squash: { land: [1.25, 0.72, 1.25], jump: [0.82, 1.22, 0.82], recover: 12 },
     baseStats: {

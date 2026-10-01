@@ -27,7 +27,10 @@ export const TUNING = {
     jumpBuffer: 0.12,
     groundSnapDist: 0.25,
     maxSlopeDeg: 48,
-    respawnFallY: -20,
+    respawnFallY: -20, // absolute floor of the world (the failsafe)
+    // [WO-006] Fast fail: falling this far (m) below the ACTIVE checkpoint respawns at it. Off the
+    // Crosswind Bridge that is ≤ 1.0 s even when gliding. PROVISIONAL (the ≤ 1.0 s target is).
+    respawnDrop: 2.5,
     respawnFade: 0.18,
     squash: {
       land: [1.25, 0.72, 1.25],

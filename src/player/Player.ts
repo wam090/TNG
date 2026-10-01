@@ -230,9 +230,9 @@ export class Player {
       this.chassis.material.color.lerpColors(this.tintFrom, this.tintTo, this.tintT);
     }
 
-    // Fell out of the world → instant respawn behind a short fade.
+    // Fell `respawnDrop` below the active checkpoint (or out of the world) → instant respawn, short fade.
     this.fadeTimer = Math.max(0, this.fadeTimer - dt);
-    if (this.controller.position.y < TUNING.player.respawnFallY) {
+    if (this.controller.position.y < Math.max(TUNING.player.respawnFallY, this.spawn.y - TUNING.player.respawnDrop)) {
       this.controller.teleport(this.spawn);
       this.resetInterpolation();
       this.fadeTimer = TUNING.player.respawnFade;

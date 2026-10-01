@@ -91,6 +91,7 @@ describe('Glide — through the real Player (element-blind wiring)', () => {
   function fallThenGlide(): { player: Player; vyBefore: number } {
     const player = new Player(new THREE.Scene(), () => null);
     player.spawnAt(new THREE.Vector3(0, 200, 0));
+    player.setSpawn(new THREE.Vector3(0, 0, 0)); // fast fail is relative to the respawn point (WO-006): keep it far below
     player.addElement(windModule);
     for (let i = 0; i < 60; i += 1) player.update(DT, DT, snap());
     const vyBefore = player.velocity.y;

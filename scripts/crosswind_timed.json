@@ -1,0 +1,9 @@
+{
+  "name": "crosswind_timed",
+  "setupKeys": ["F4", "F5", "F5"],
+  "steps": 640,
+  "segments": [
+    { "from": 240, "until": 313, "hold": ["down", "right"] },
+    { "from": 480, "until": 560, "hold": ["down", "right"] }
+  ]
+}
