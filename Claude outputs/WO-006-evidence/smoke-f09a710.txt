@@ -1,0 +1,11 @@
+npm run preview:smoke on build f09a710 (WO-006 stage B), 2026-10-01
+ok   zip has index.html at its root (stillmote-f09a710.zip, 3 files)
+ok   game loads inside an iframe from /html/0000000/
+ok   renders a frame (50 distinct colours in the embed, need ≥ 12)
+ok   no console errors or exceptions in the embed
+ok   ?debug=1 shows the F1 stats overlay in the production build
+ok   F1 overlay names the build (f09a710)
+ok   no console errors or exceptions with ?debug=1
+preview:smoke passed — preview/stillmote-f09a710.zip boots from a subpath
+
+Stage A build 4e736de: preview:smoke passed as well.
