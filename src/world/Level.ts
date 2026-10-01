@@ -147,6 +147,9 @@ export class Level {
       completeLevel: () => {
         this.bus.emit('levelComplete', { levelId: this.levelId });
       },
+      reportLift: (id) => {
+        this.bus.emit('updraftLift', { id });
+      },
     };
   }
 

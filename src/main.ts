@@ -19,6 +19,7 @@ import { Materials } from './render/Materials';
 import { Renderer } from './render/Renderer';
 import { ActionPrompt } from './ui/ActionPrompt';
 import { FadeOverlay } from './ui/FadeOverlay';
+import { GlidePrompt } from './ui/GlidePrompt';
 import { Hud } from './ui/Hud';
 import { LevelComplete } from './ui/LevelComplete';
 import { LevelCompleteCard } from './ui/LevelCompleteCard';
@@ -37,6 +38,12 @@ const bus = new EventBus();
 const hud = new Hud();
 const input = new Input();
 const actionPrompt = new ActionPrompt(() => input.lastDevice, actionGlyph);
+// WO-006: the same keycap language for the glide — the JUMP glyph, in the same spot (the two
+// never overlap in play: the vent must be Gusted before any updraft lifts him). The ␣ symbol
+// is a thin baseline mark, so it is drawn larger than the E to read at the same weight.
+const GLIDE_GLYPH = { px: 24, liftPx: 10 };
+const glideKeycap = new ActionPrompt(() => input.lastDevice, jumpGlyph, GLIDE_GLYPH);
+const glidePrompt = new GlidePrompt(glideKeycap);
 const timeScale = new TimeScale();
 const pickupFx = new PickupFx(timeScale);
 // ?level=sandbox loads the DISPOSABLE M4a prop sandbox; default is level01.
@@ -88,6 +95,7 @@ const run = new LevelRun(level, player, levelJson, [
   levelComplete,
   hud,
   actionPrompt,
+  glidePrompt,
   cameraRig,
   {
     reset: (): void => {
@@ -113,7 +121,14 @@ const game = new Game({
     {
       update: (dt: number): void => {
         level.update(dt, playerView);
+        const airborne = !player.grounded;
+        glidePrompt.step({
+          rising: airborne && player.velocity.y > 0,
+          falling: airborne && player.velocity.y < 0,
+          gliding: player.state === 'glide',
+        });
         actionPrompt.refresh();
+        glideKeycap.refresh();
       },
     },
   ],
@@ -127,6 +142,11 @@ bus.on('tokenPickup', ({ element }) => {
   hud.setSlot(module.bodyTint);
   pickupFx.trigger();
   actionPrompt.show();
+});
+
+// The first updraft lift arms the glide prompt (WO-006); it shows once he starts to fall.
+bus.on('updraftLift', () => {
+  glidePrompt.lifted();
 });
 
 // Checkpoints move the respawn point (SPEC §6.3: respawn at the last checkpoint).

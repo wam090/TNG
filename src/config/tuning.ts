@@ -90,8 +90,8 @@ export const TUNING = {
     gust: {
       cooldown: 0.55,
       range: 5.5,
-      // HALF-angle of the cone (±). PROVISIONAL (WO-004, ruling 2): the VP judges it at his
-      // next play from the menu 30 / 37.5 / 45. Was `coneDeg` 45 read as the full cone (±22.5°).
+      // HALF-angle of the cone (±). VP-approved 2026-10-01 (WO-006, after playing Beats 0–3).
+      // Was `coneDeg` 45 read as the full cone (±22.5°).
       coneHalfDeg: 45,
       force: 18,
       selfImpulseAir: 5.0,
@@ -151,10 +151,10 @@ export const TUNING = {
   // ── [M0+] sections below. scaffold.* dies at M1 when the level pipeline lands. ──
 
   ui: {
-    // [WO-005] The Level Complete moment (pulled forward from M6). All PROVISIONAL for the VP.
+    // [WO-005] The Level Complete moment (pulled forward from M6). VP-approved 2026-10-01 (WO-006).
     //  fadeTime: s for the screen to fade toward the level's sky colour (and the card to come in).
     //  holdBeforeInput: s after the Goal before Jump/Action can replay — a held key can't skip the card.
-    //  fadeOpacity: how far "toward" the sky the fade goes (1 = the world is gone). Menu 0.7 / 0.85 / 1.0.
+    //  fadeOpacity: how far "toward" the sky the fade goes (1 = the world is gone).
     levelComplete: { fadeTime: 0.5, holdBeforeInput: 0.6, fadeOpacity: 0.85 },
   },
 

@@ -18,6 +18,7 @@ import { TimeScale } from '../core/TimeScale';
 import { inputToWorld, Player } from '../player/Player';
 import { CameraRig } from '../render/CameraRig';
 import { Materials } from '../render/Materials';
+import { GlidePrompt } from '../ui/GlidePrompt';
 import { LevelComplete, type LevelCompleteView } from '../ui/LevelComplete';
 import { Level } from '../world/Level';
 import { LevelBuilder } from '../world/LevelBuilder';
@@ -208,6 +209,9 @@ interface Sim {
   rig: CameraRig;
   ts: TimeScale;
   lc: LevelComplete;
+  /** The glide prompt, wired as main.ts wires it; `keycap.visible` is what the screen shows. */
+  glide: GlidePrompt;
+  keycap: { visible: boolean };
   /** Opaque-candidate level + prop objects (everything but the player's own). */
   occluders: () => THREE.Object3D[];
   events: string[];
@@ -247,12 +251,29 @@ function makeSim(atCheckpoint = false, json: unknown = level01): Sim {
     events.push('replay');
   });
   bus.on('checkpoint', () => events.push('checkpoint'));
+  const keycap = { visible: false, dismissed: false };
+  const glide = new GlidePrompt({
+    show: () => {
+      if (!keycap.dismissed) keycap.visible = true;
+    },
+    dismiss: () => {
+      keycap.dismissed = true;
+      keycap.visible = false;
+    },
+    reset: () => {
+      keycap.dismissed = false;
+      keycap.visible = false;
+    },
+  });
+  bus.on('updraftLift', () => {
+    glide.lifted();
+  });
   bus.on('levelComplete', () => {
     events.push('goal');
     const sh = level.shards;
     lc.complete({ shardsFound: sh.found, shardsTotal: sh.total, sky: level.skyColor });
   });
-  const levelRun = new LevelRun(level, player, json, [ts, lc, rig]);
+  const levelRun = new LevelRun(level, player, json, [ts, lc, rig, glide]);
   levelRun.start();
   if (atCheckpoint) {
     player.addElement(registry.get('wind')); // F4
@@ -261,7 +282,7 @@ function makeSim(atCheckpoint = false, json: unknown = level01): Sim {
   }
   rig.update(player.position, player.velocity, 0);
   const occluders = (): THREE.Object3D[] => scene.children.filter((o) => !playerObjects.has(o));
-  return { scene, player, level, rig, ts, lc, occluders, events };
+  return { scene, player, level, rig, ts, lc, glide, keycap, occluders, events };
 }
 
 function viewOf(player: Player) {
@@ -281,6 +302,12 @@ function stepOnce(sim: Sim, polled: InputSnapshot): void {
   const eff = DT * sim.ts.value;
   sim.player.update(eff, DT, snap);
   sim.level.update(eff, viewOf(sim.player));
+  const airborne = !sim.player.grounded;
+  sim.glide.step({
+    rising: airborne && sim.player.velocity.y > 0,
+    falling: airborne && sim.player.velocity.y < 0,
+    gliding: sim.player.state === 'glide',
+  });
   sim.player.syncVisual(1);
   sim.rig.update(sim.player.renderPosition, sim.player.velocity, DT);
 }
@@ -650,5 +677,49 @@ describe('Vent Court — Beat 3 (WO-005 Stage B)', () => {
       if (Math.abs(ndc.x) < 0.95 && Math.abs(ndc.y) < 0.95 && visible(sim, p)) shown += 1;
     }
     expect(shown).toBeGreaterThanOrEqual(4); // ≥ 2 m of the landing edge
+  });
+});
+
+// ── WO-006 Stage A: the glide prompt, in the real level ─────────────────────
+describe('Glide prompt in the Vent Court (WO-006 Stage A)', () => {
+  it('vent_court: hidden through the yard and the rise; shown from the first falling step after the lift until the glide', () => {
+    const sim = makeSim(true);
+    let carried = -1; // first step the column has carried him well above the plinth (the hop never gets there)
+    let firstFall = -1;
+    let firstGlide = -1;
+    const shown: number[] = [];
+    run(sim, ventCourtScript, (i) => {
+      if (carried < 0 && sim.player.position.y > VENT.base + 3) carried = i;
+      if (carried >= 0 && firstFall < 0 && !sim.player.grounded && sim.player.velocity.y < 0) firstFall = i;
+      if (firstGlide < 0 && sim.player.state === 'glide') firstGlide = i;
+      if (sim.keycap.visible) shown.push(i);
+    });
+    expect(carried).toBeGreaterThan(0);
+    expect(firstFall).toBeGreaterThan(carried);
+    expect(firstGlide).toBeGreaterThan(firstFall);
+    expect(shown[0]).toBe(firstFall); // the very first falling step after the lift
+    expect(shown.at(-1)).toBe(firstGlide - 1); // gone the step he glides
+    expect(shown).toHaveLength(firstGlide - firstFall); // and visible every step between
+    expect(sim.glide.isDone).toBe(true);
+  });
+
+  it('full_run: never shown in the yard (jumps and falls there do not arm it); a replay re-arms it for the next run', () => {
+    const sim = makeSim();
+    let shownBeforeCourt = false;
+    let everShown = false;
+    run(sim, fullRunScript, () => {
+      if (sim.keycap.visible) {
+        everShown = true;
+        if (!sim.level.signals.list().includes('sig_vent_court')) shownBeforeCourt = true;
+      }
+    });
+    expect(everShown).toBe(true);
+    expect(shownBeforeCourt).toBe(false);
+    expect(sim.glide.isDone).toBe(true);
+    while (!sim.lc.accepting) stepOnce(sim, NO_INPUT);
+    stepOnce(sim, { ...NO_INPUT, jumpPressed: true, jumpHeld: true });
+    expect(sim.events.at(-1)).toBe('replay');
+    expect(sim.glide.isDone).toBe(false);
+    expect(sim.keycap.visible).toBe(false);
   });
 });

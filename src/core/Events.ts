@@ -32,6 +32,8 @@ export interface GameEvents {
   checkpoint: { id: string; feet: THREE.Vector3 };
   shardCollected: { id: string };
   levelComplete: { levelId: string };
+  /** An updraft started lifting the body (WO-006: arms the glide prompt). Says nothing about who. */
+  updraftLift: { id: string };
 }
 
 type Handler<K extends keyof GameEvents> = (payload: GameEvents[K]) => void;

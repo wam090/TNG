@@ -53,6 +53,7 @@ function propCtx(player = playerView()): PropContext & { events: string[] } {
     setCheckpoint: (id) => events.push(`checkpoint:${id}`),
     collectShard: (id) => events.push(`shard:${id}`),
     completeLevel: () => events.push('goal'),
+    reportLift: (id) => events.push(`lift:${id}`),
   };
 }
 
@@ -397,6 +398,21 @@ describe('Updraft (SPEC §6.4, DM ruling) — an upward FORCE: light bodies rise
     step(u, c, DT);
     expect(u.isEnabled).toBe(true);
     expect((c.player as ReturnType<typeof playerView>).forces.length).toBeGreaterThan(0);
+  });
+
+  it('reports a lift once when it begins, and again only after it has stopped (WO-006 glide prompt)', () => {
+    const u = new Updraft(parseAs('updraft', { id: 'u', pos: [0, 0, 0], listensTo: ['vent'] }), new THREE.Scene(), new Materials());
+    const c = propCtx(playerView(new THREE.Vector3(0, 0, 0)));
+    step(u, c, 1);
+    expect(c.events).toEqual([]); // choked: no lift, no report
+    c.signals.emit('vent');
+    step(u, c, 1);
+    expect(c.events).toEqual(['lift:u']); // a second of lifting is ONE report
+    c.player.feet.set(10, 0, 0); // out of the column
+    step(u, c, DT);
+    c.player.feet.set(0, 0, 0); // back in
+    step(u, c, DT);
+    expect(c.events).toEqual(['lift:u', 'lift:u']);
   });
 });
 

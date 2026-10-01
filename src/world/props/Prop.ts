@@ -25,6 +25,8 @@ export interface PropContext {
   setCheckpoint(id: string, feet: THREE.Vector3): void;
   collectShard(id: string): void;
   completeLevel(): void;
+  /** An updraft started applying its lift to the body (a fact about the prop, not the body). */
+  reportLift(id: string): void;
 }
 
 /**

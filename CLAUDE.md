@@ -162,4 +162,17 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`WO-005 — M4b unit 2: Beat 3, the Vent Court · minimal Level Complete card.` Done when: reaching the Goal freezes the sim through TimeScale, fades toward the level's sky and shows a wordless card (done glyph, clock + m:ss.s raw run time, shard row when the level has shards, Jump-glyph replay prompt after the hold); replay is a full reset tested identical to a fresh load; a card golden exists; the Vent Court is entered through the yard's gate past a checkpoint, stays visible by layout (raycast test over the whole Beats 0–3 path), has no void, cannot be sequence-broken (tested), and is reachable by updraft + glide with a stated margin; the Goal sits on the ledge; `vent_court` and a full-run script exist; all gates + shot:check green. Stop before Beat 4.
+`WO-006 — M4b unit 3: Beat 4, the Crosswind Bridge · glide prompt.` Done when:
+- **Glide prompt:** an icon-only Jump keycap shows from his first fall after an updraft lift until his first glide, once per run, reset by replay. It has a golden.
+- **The VP's 2026-10-01 approvals** are recorded.
+- **The Crosswind Bridge:**
+  - a narrow bridge at the ledge height over nothing, with a pulsed cross-wind (4.0 s period / 1.6 s gust / 0.6 s telegraph) and a checkpoint at its entrance;
+  - the B8 mass rule tested with simulated terminal speeds;
+  - the exposed span crossable within ~60 % of the 2.4 s calm, margin stated;
+  - timed crossing, mid-air Gust counter and blown-off scripts;
+  - fast fail to the checkpoint within ≤ 1.0 s of leaving the bridge;
+  - no route around the wind (tested);
+  - raycast visibility over the bridge and the fall;
+  - the Goal at the bridge's far end;
+  - `full_run` covers Beats 0–4.
+- All gates + shot:check green. Stop before Beat 5.

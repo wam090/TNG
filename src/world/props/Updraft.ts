@@ -26,6 +26,7 @@ export class Updraft implements Prop {
   private readonly grate: THREE.Mesh;
   private readonly column: THREE.Mesh;
   private enabled: boolean;
+  private lifting = false;
   private readonly lift = new THREE.Vector3();
 
   constructor(
@@ -60,9 +61,10 @@ export class Updraft implements Prop {
       this.column.visible = true;
     }
     const inside = this.volume.contains(bodyCentre(ctx.player));
-    if (this.enabled && inside && ctx.player.velocity.y < this.data.velocity) {
-      ctx.player.applyForce(this.lift);
-    }
+    const lifting = this.enabled && inside && ctx.player.velocity.y < this.data.velocity;
+    if (lifting) ctx.player.applyForce(this.lift);
+    if (lifting && !this.lifting) ctx.reportLift(this.data.id); // each time a lift begins
+    this.lifting = lifting;
     setGizmoColor(this.gizmo, !this.enabled ? GIZMO_COLOR.idle : inside ? GIZMO_COLOR.active : GIZMO_COLOR.done);
   }
 
