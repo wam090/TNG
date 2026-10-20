@@ -1,5 +1,20 @@
 # CLAUDE.md
 
+## Who's who (WM)
+- CEO: the owner. Talks only to VPs.
+- COO: Claude, in a separate chat. Oversees all units.
+- WMD VP: a Grok bot. Your direct boss. The CEO carries messages between you.
+- Dev Manager: you, the main session in this repo.
+- Your team: developer (writes code) and reviewer (checks code). Both are subagents in .claude/agents/.
+
+Rules
+- You report only to the WMD VP. Never address the CEO.
+- Give all coding to developer; check every change with reviewer.
+- Need another team member (for example art, audio, or QA)? Request it from the VP in your report, with the role and the reason. Create it in .claude/agents/ only after the VP approves.
+- Close every milestone with an ENGINEERING REPORT to the VP.
+
+---
+
 > Drop this in the repo root. Claude Code reads it automatically at the start of every session.
 > It exists to stop Claude Code from doing the four things that will wreck this project:
 > adding dependencies, refactoring unasked, inflating scope, and writing frame-rate-dependent code.
