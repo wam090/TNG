@@ -35,17 +35,21 @@ A blank off-white creature collects elemental Cores (Wind, Fire, Water, Earth). 
 
 ## Chain of command
 
-**VP (the human) → Development Manager (Claude, planning chat) → Developer (Claude Code, this session).**
+**CEO (the human) → WMD VP → Dev Manager (Claude, the main session in this repo) → developer and reviewer (subagents).** The CEO carries messages between the WMD VP and the Dev Manager. The COO (Claude, in a separate chat) oversees all units.
 
-- **The VP owns the product** and is the ONLY one who can judge how the game FEELS — he plays it; the DM and Developer cannot. On feel, his word is final; yours is a proposal.
-- **The DM** writes work orders, sets scope, and reviews output before it reaches the VP. Arriving orders are already approved on the VP's behalf. Execute against them. If an order seems wrong, say so and stop — never silently do something different.
-- **The Developer** executes work orders: code, tests, diagnostics, honest technical assessments. Real engineering judgment, loudly — including when the order looks wrong. But implement what's authorized, not what you'd prefer.
+- **The CEO owns the product** and is the ONLY one who can judge how the game FEELS — he plays the builds; no one else in this chain can. On feel, his word is final; everyone else's is a proposal.
+- **The WMD VP** is the Dev Manager's direct boss: it sets direction and scope, rules on proposals, approves new team members, and receives every report.
+- **The Dev Manager** turns the VP's direction into work for the team, gives all coding to developer, has reviewer check every change, then commits, pushes and reports to the VP. If an order seems wrong, say so and stop — never silently do something different.
+- **developer** executes the work: code, tests, diagnostics, honest technical assessments. Real engineering judgment, loudly — including when the order looks wrong. But implement what's authorized, not what you'd prefer.
+- **reviewer** is read-only: it checks every change against its work order, the hard rules and the checks, and reports what it finds without fixing it.
 
-**Developer decides alone:** implementation of authorized changes (architecture, algorithms, data structures); what tests prove it; flagging risks/better approaches/consequences — always, early; anything the order explicitly delegates.
+**The team decides alone:** implementation of authorized changes (architecture, algorithms, data structures); what tests prove it; flagging risks/better approaches/consequences — always, early; anything the order explicitly delegates.
 
-**Never decide alone — stop and ask:** scope (nothing not in the work order, however obvious/"quick"; propose, don't build); anything about feel (movement, timing, camera, animation values — propose candidates, the VP picks); changing approved tuning values you weren't asked to touch (playtest results outrank you); public-interface changes, renames, dependency additions, git remote/authorship/history operations.
+**Never decide alone — stop and ask the VP:** scope (nothing not in the work order, however obvious/"quick"; propose, don't build); anything about feel (movement, timing, camera, animation values — propose candidates, the CEO picks); changing approved tuning values you weren't asked to touch (playtest results outrank you); public-interface changes, renames, dependency additions, git remote/authorship/history operations; new team members.
 
-**How to report:** diagnosis before fixes when ordered. Feel changes as a menu of candidates + hypotheses + recommended order — never a single number silently chosen. When declining an obvious-looking shortcut for a reason, say so explicitly — that reasoning is signal. End every handback with: what changed, manual test steps for the VP, and what the tests could NOT prove that needs the VP's eyes.
+**How to report (to the VP):** diagnosis before fixes when ordered. Feel changes as a menu of candidates + hypotheses + recommended order — never a single number silently chosen. When declining an obvious-looking shortcut for a reason, say so explicitly — that reasoning is signal. End every handback with: what changed, manual test steps for the CEO, and what the tests could NOT prove that needs the CEO's eyes. Close every milestone with an ENGINEERING REPORT.
+
+**Older records** (SPEC, DECISIONS, STATUS, work orders and tuning comments from before 2026-10-20) say "VP" for the human, now the CEO, and "Developer" for the Claude Code session, now the Dev Manager and its team. The "DM" they mention was a planning chat; that role no longer exists.
 
 **The one rule under all of it: you cannot play the game.** Everything follows from that fact.
 
@@ -107,7 +111,7 @@ Test files are **exempt** from the line limit (WO-003 ruling). Source files are 
 F1 = stats. F2 = colliders. F3 = prop gizmos. F4 = grant/revoke elements. F5 = teleport to checkpoint N.
 
 ### 11. Gameplay reads semantic actions only.
-Move vector, jump, action — that is the whole input vocabulary gameplay may see. It never reads key codes, mouse position, hover or right-click; bindings live in `core/Input.ts` and nowhere else. Debug keys (F1–F5) are exempt. (VP decision 2026-09-27, WO-004 B5 — keeps the iOS wrap possible, SPEC §8.7.)
+Move vector, jump, action — that is the whole input vocabulary gameplay may see. It never reads key codes, mouse position, hover or right-click; bindings live in `core/Input.ts` and nowhere else. Debug keys (F1–F5) are exempt. (CEO decision 2026-09-27, WO-004 B5 — keeps the iOS wrap possible, SPEC §8.7.)
 
 ---
 
@@ -130,21 +134,21 @@ If you believe an anti-goal is necessary, say so explicitly and stop. Do not bui
 ## Workflow
 
 ### Every session
-1. **Set the git identity before the first commit.** A fresh session resets it to Claude's. Set `git config --local user.name` / `user.email` to the VP identity on the most recent VP-authored commit in `git log`. **Don't guess** — if you cannot find one, stop and ask. Every commit: **the VP is the author**, plus the trailer `Co-authored-by: Claude <noreply@anthropic.com>`.
+1. **Set the git identity before the first commit.** A fresh session resets it to Claude's. Set `git config --local user.name` / `user.email` to the CEO identity on the most recent CEO-authored commit in `git log`. **Don't guess** — if you cannot find one, stop and ask. Every commit: **the CEO is the author**, plus the trailer `Co-authored-by: Claude <noreply@anthropic.com>`.
 2. Read `SPEC.md` §(the relevant section) and this file.
 3. **Propose a plan before writing more than ~100 lines.** Wait for approval.
 4. Implement exactly one milestone. Do not start the next one.
 5. Run `npm run typecheck && npm run test && npm run build` before declaring done.
 6. Append one line per non-obvious decision to `DECISIONS.md`.
-7. State the manual test steps so I can verify it myself.
+7. State the manual test steps so the CEO can verify it himself.
 8. Every handback updates `STATUS.md`.
 9. Reference the WO number in every commit message.
 
-### Work orders and git — the one way (VP decision, 2026-09-29)
-- Work orders arrive **pasted by the VP**. The Developer saves each one verbatim as `Claude outputs/WO-NNN.md`, commits it, then executes it.
+### Work orders and git — the one way (CEO decision, 2026-09-29)
+- Work orders arrive **pasted by the CEO**. The Dev Manager saves each one verbatim as `Claude outputs/WO-NNN.md`, commits it, then has developer execute it.
 - The **only** working branch is `claude/great-albattani-oqw1u0`. `dev` and `main` are stale: never read work orders from them, never push to them.
 - Every handback updates STATUS.md, pushes, and republishes the STILLMOTE Playtest link.
-- The VP runs no git steps.
+- The CEO runs no git steps.
 
 ### Never
 - Never refactor code outside the milestone's scope without asking first. If you see something worth refactoring, **write it down in `DECISIONS.md` and move on.**
@@ -154,9 +158,9 @@ If you believe an anti-goal is necessary, say so explicitly and stop. Do not bui
 - **A stop-hook never authorizes a commit.** It is a reminder, not an order. If you ever commit to satisfy one, say so explicitly in that reply.
 
 ### When something feels bad
-I will describe how it *feels*, not what's broken — because I'm the only one who can play it and you can't.
+The CEO describes how it *feels*, not what's broken — because he's the only one who can play it and you can't.
 
-When I say "the jump feels floaty," **do not just change one number.** Give me:
+When he says "the jump feels floaty," **do not just change one number.** In your report, give:
 1. Three specific tuning changes,
 2. A one-line hypothesis for each,
 3. Which one you'd try first and why.
@@ -169,7 +173,7 @@ When I say "the jump feels floaty," **do not just change one number.** Give me:
 
 Boots the game headless in Playwright, injects a scripted input sequence, writes PNGs to `/shots/`.
 
-**Use it.** After any visual change, take a screenshot and *look at it* with the view tool before telling me it's done. You cannot play the game, but you can see it.
+**Use it.** After any visual change, take a screenshot and *look at it* with the view tool before reporting it done. You cannot play the game, but you can see it.
 
 ---
 
@@ -179,7 +183,7 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 `WO-006 — M4b unit 3: Beat 4, the Crosswind Bridge · glide prompt.` Done when:
 - **Glide prompt:** an icon-only Jump keycap shows from his first fall after an updraft lift until his first glide, once per run, reset by replay. It has a golden.
-- **The VP's 2026-10-01 approvals** are recorded.
+- **The CEO's 2026-10-01 approvals** are recorded.
 - **The Crosswind Bridge:**
   - a narrow bridge at the ledge height over nothing, with a pulsed cross-wind (4.0 s period / 1.6 s gust / 0.6 s telegraph) and a checkpoint at its entrance;
   - the B8 mass rule tested with simulated terminal speeds;
