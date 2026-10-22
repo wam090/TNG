@@ -181,17 +181,12 @@ Boots the game headless in Playwright, injects a scripted input sequence, writes
 
 > ⬅️ **Update this line at the start of every session.**
 
-`WO-006 — M4b unit 3: Beat 4, the Crosswind Bridge · glide prompt.` Done when:
-- **Glide prompt:** an icon-only Jump keycap shows from his first fall after an updraft lift until his first glide, once per run, reset by replay. It has a golden.
-- **The CEO's 2026-10-01 approvals** are recorded.
-- **The Crosswind Bridge:**
-  - a narrow bridge at the ledge height over nothing, with a pulsed cross-wind (4.0 s period / 1.6 s gust / 0.6 s telegraph) and a checkpoint at its entrance;
-  - the B8 mass rule tested with simulated terminal speeds;
-  - the exposed span crossable within ~60 % of the 2.4 s calm, margin stated;
-  - timed crossing, mid-air Gust counter and blown-off scripts;
-  - fast fail to the checkpoint within ≤ 1.0 s of leaving the bridge;
-  - no route around the wind (tested);
-  - raycast visibility over the bridge and the fall;
-  - the Goal at the bridge's far end;
-  - `full_run` covers Beats 0–4.
-- All gates + shot:check green. Stop before Beat 5.
+`WO-007 — Show the glide: the crown rotor (an M5 item, pulled forward by the CEO).` Done when:
+- **Stage A, test baseline:** the 10 goldens that differ only inside text glyphs in this environment are regenerated, each diff viewed, and only those re-blessed. One DECISIONS line records it.
+- **Stage B, the crown rotor:** a Wind attachment on the `crown` socket, built from primitives, that shows only while he glides:
+  - it deploys with a short scale-in, retracts when the glide ends, and is never visible after a respawn or a replay unless he is gliding;
+  - Player.ts is unchanged and nothing checks an element; every value is in `tuning.wind.rotor`, PROVISIONAL; the spin is rate × dt;
+  - tests: it shows only while gliding; it hides on landing, on respawn and on replay; the spin is frame-rate independent;
+  - it reads against both the sky and the grey level (evidence: a glide in the Vent Court, a glide off the Crosswind Bridge).
+- **Records:** the SPEC as-built notes; `player.respawnDrop` marked CEO-approved; the 2026-10-21 playtest and diagnosis in DECISIONS and STATUS.
+- All gates + `shot:check --threshold=0` (every golden) + preview:smoke green. Stop after Stage B.

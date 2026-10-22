@@ -29,7 +29,7 @@ export const TUNING = {
     maxSlopeDeg: 48,
     respawnFallY: -20, // absolute floor of the world (the failsafe)
     // [WO-006] Fast fail: falling this far (m) below the ACTIVE checkpoint respawns at it. Off the
-    // Crosswind Bridge that is ≤ 1.0 s even when gliding. PROVISIONAL (the ≤ 1.0 s target is).
+    // Crosswind Bridge that is ≤ 1.0 s even when gliding. CEO-approved 2026-10-21 ("yes it's quick").
     respawnDrop: 2.5,
     respawnFade: 0.18,
     squash: {
@@ -103,6 +103,22 @@ export const TUNING = {
       duration: 0.18,
       hitStop: 0.04,
     },
+    // [WO-007] Crown rotor (SPEC §3.3), pulled forward from M5 by the CEO: a thin disc with blades on
+    // the crown socket that shows only while gliding. ALL PROVISIONAL: a placeholder look the CEO judges.
+    //  radius: m, the disc and blades. lift: m, the disc above the crown socket. blades: count.
+    //  spinRate: rad/s, time-based (rate × dt). deployTime: s to scale in when the glide starts, and out
+    //  when it ends in mid-air (touchdown hides it at once). Dark blades over a pale see-through disc,
+    //  so it reads against both the sky and the grey level (Wind's grey-blue family: an element effect).
+    rotor: {
+      radius: 0.5,
+      lift: 0.05,
+      blades: 3,
+      spinRate: 18,
+      deployTime: 0.15,
+      bladeColor: '#2B3640',
+      discColor: '#EEF3F6',
+      discOpacity: 0.55,
+    },
     vfx: {
       streaks: 3,
       orbitRadius: 0.75,
@@ -116,6 +132,8 @@ export const TUNING = {
   },
 
   props: {
+    // Level 1's bridge zones set force 13.25 in the level JSON: still PROVISIONAL (WO-007: the CEO
+    // approved being blown off as fair, but did not judge the strength itself).
     windZone: { defaultForce: 9.5, period: 4.0, duration: 1.6, telegraph: 0.6 },
     updraft: {
       velocity: 9.0, // rise-speed ceiling (m/s): the lift stops pushing once vy reaches it

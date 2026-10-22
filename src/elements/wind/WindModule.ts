@@ -3,6 +3,7 @@ import { TUNING } from '../../config/tuning';
 import type { AttachmentSpec, ElementModule, ElementVfx } from '../ElementModule';
 import { GlideAbility } from './abilities/GlideAbility';
 import { GustAbility } from './abilities/GustAbility';
+import { crownRotor } from './CrownRotor';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TEST FIXTURE — this ring exists ONLY to prove the socket pipeline attaches,
@@ -38,14 +39,17 @@ const noopVfx: ElementVfx = {
   dispose: () => undefined,
 };
 
-/** Wind: tint + stat overrides + tags + Gust/Glide (M4a). Visuals are M5. */
+/**
+ * Wind: tint + stat overrides + tags + Gust/Glide (M4a). Visuals are M5, except the crown
+ * rotor, which the CEO pulled forward (WO-007): it shows only while gliding.
+ */
 export const windModule: ElementModule = {
   id: 'wind',
   displayName: 'Wind Core',
   bodyTint: TUNING.wind.tint,
   tags: ['light', 'air'],
   statMods: { ...TUNING.wind.statMods },
-  attachments: [testFixtureRing],
+  attachments: [testFixtureRing, crownRotor],
   abilities: [
     { id: 'gust', create: () => new GustAbility() },
     { id: 'glide', create: () => new GlideAbility() },

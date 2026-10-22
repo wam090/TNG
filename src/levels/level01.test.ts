@@ -1023,3 +1023,102 @@ describe('Crosswind Bridge — Beat 4 (WO-006 Stage B)', () => {
     for (const z of zones) expect(B3.goal.pos[0] - B3.goal.radius).toBeGreaterThan(z.pos[0] + z.size[0] / 2);
   });
 });
+
+// ── WO-007 Stage B: the crown rotor, through the real level ─────────────────
+describe('Crown rotor in Level 1 (WO-007 Stage B)', () => {
+  // A mid-air retract takes deployTime of world time (= raw time here: no dilation or hit-stop
+  // near any glide); +1 step of slack for float rounding should deployTime ever be retuned.
+  const RETRACT_STEPS = Math.ceil(TUNING.wind.rotor.deployTime / DT) + 1;
+  const rotorOf = (sim: Sim): THREE.Object3D | undefined => sim.scene.getObjectByName('attachment:crown-rotor');
+  const shown = (sim: Sim): boolean => rotorOf(sim)?.visible === true;
+  /** From the bridge checkpoint: onto span A in the calm, then jump off its camera-side edge and glide,
+   * holding Jump through the respawn and after (the input behind the WO-007 bridge evidence frame). */
+  const glideOffBridge = {
+    name: 'glide_off_bridge',
+    steps: 240,
+    segments: [
+      { from: 0, until: 30, hold: ['down', 'right'] },
+      { from: 30, until: 240, hold: ['down', 'left'] },
+      { from: 30, until: 58, hold: ['jump'] },
+      { from: 62, until: 240, hold: ['jump'] },
+    ],
+  };
+
+  /** Run a script and check the rotor's rule on every step. */
+  function watch(sim: Sim, script: unknown): { glideSteps: number; shownSteps: number; bad: string[] } {
+    let glideSteps = 0;
+    let shownSteps = 0;
+    let sinceGlide = Number.POSITIVE_INFINITY; // steps since the last glide step
+    const bad: string[] = [];
+    run(sim, script, (i) => {
+      const p = sim.player;
+      const vis = shown(sim);
+      sinceGlide = p.state === 'glide' ? 0 : sinceGlide + 1;
+      if (p.state === 'glide') glideSteps += 1;
+      if (vis) shownSteps += 1;
+      if (p.state === 'glide' && !vis) bad.push(`${String(i)}: gliding, rotor hidden`);
+      if (p.grounded && vis) bad.push(`${String(i)}: on the ground, rotor shown`);
+      if (vis && sinceGlide > RETRACT_STEPS) bad.push(`${String(i)}: shown ${String(sinceGlide)} steps after the glide`);
+    });
+    return { glideSteps, shownSteps, bad };
+  }
+
+  it('vent_court and full_run: shown on every glide step, never on the ground, otherwise only while retracting', () => {
+    const vent = watch(makeSim(true), ventCourtScript); // from the Beat 3 checkpoint, as F4 + F5
+    const full = watch(makeSim(), fullRunScript); // Beats 0–4: no rotor before the Core, none in the yard
+    for (const w of [vent, full]) {
+      expect(w.glideSteps).toBeGreaterThan(30);
+      expect(w.bad).toEqual([]);
+      // Both glides end in mid-air (Jump released over the ledge), so each shows one full retract.
+      expect(w.shownSteps).toBeGreaterThan(w.glideSteps);
+      expect(w.shownSteps).toBeLessThanOrEqual(w.glideSteps + RETRACT_STEPS);
+    }
+  });
+
+  it('a glide that ends in a respawn: that step is fully faded, and from the next step at the checkpoint there is no rotor', () => {
+    const sim = makeSim(true);
+    const cp = sim.level.checkpoints[1]; // the bridge checkpoint, as F4 + F5 + F5
+    if (!cp) throw new Error('no bridge checkpoint');
+    sim.player.spawnAt(cp);
+    let respawn = -1;
+    let fadeAtRespawn = 0;
+    let atRespawn: number[] = [];
+    let shownBefore = false;
+    let wasShown = false;
+    const after: boolean[] = [];
+    let prev = sim.player.position.clone();
+    run(sim, glideOffBridge, (i) => {
+      const p = sim.player.position;
+      if (respawn < 0 && p.distanceTo(prev) > 2) {
+        respawn = i;
+        fadeAtRespawn = sim.player.fadeOpacity;
+        atRespawn = p.toArray();
+        shownBefore = wasShown;
+      } else if (respawn >= 0) {
+        after.push(shown(sim));
+      }
+      wasShown = shown(sim);
+      prev = p.clone();
+    });
+    expect(respawn).toBeGreaterThan(0);
+    expect(atRespawn).toEqual(cp.toArray()); // back at the bridge checkpoint
+    expect(shownBefore).toBe(true); // he went through the fast-fail line gliding, rotor out
+    expect(fadeAtRespawn).toBe(1); // the respawn step's frame is black: nothing of him is on screen
+    expect(after.length).toBeGreaterThan(60); // Jump still held for all of these
+    expect(after.every((v) => !v)).toBe(true);
+  });
+
+  it('a replay leaves no rotor: the crown socket is empty, and the next Core builds it stowed until he glides', () => {
+    const sim = makeSim();
+    run(sim, fullRunScript, () => undefined); // glides in the Vent Court on the way
+    expect(rotorOf(sim)).toBeDefined();
+    while (!sim.lc.accepting) stepOnce(sim, NO_INPUT);
+    stepOnce(sim, { ...NO_INPUT, jumpPressed: true, jumpHeld: true });
+    expect(sim.events.at(-1)).toBe('replay');
+    expect(rotorOf(sim)).toBeUndefined();
+    expect(sim.scene.getObjectByName('socket:crown')?.children).toEqual([]);
+    const again = watch(sim, fullRunScript); // the second run, from the fresh Core on: the same rule
+    expect(again.glideSteps).toBeGreaterThan(30);
+    expect(again.bad).toEqual([]);
+  });
+});
