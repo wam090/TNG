@@ -1,100 +1,90 @@
-# STATUS — 2026-10-01 · WO-006 handback
+# STATUS — 2026-10-22 · WO-007 handback
 
-**WO-006 is complete: Stages A and B. Stopped before Beat 5, as ordered.** M4b unit 3 is ready for the VP's play. The level now runs Beats 0–4 (the Still Yard, the Vent Court and the Crosswind Bridge) and ends on the card at the bridge's far end.
+**WO-007 is complete: Stages A and B. Stopped after Stage B, as ordered.** The glide now shows: while he glides, a rotor unfolds on his crown and spins. This is the CEO's pick C, the M5 rotor pulled forward.
 
-**Play it:** the STILLMOTE Playtest link is republished with this build (commit `f09a710`): https://claude.ai/artifact/JbzCorzyLesTKQQMbT9zNb
+**Play it:** the STILLMOTE Playtest link, once it is republished with this build: https://claude.ai/artifact/JbzCorzyLesTKQQMbT9zNb
 
-Branch: `claude/great-albattani-oqw1u0`, pushed. The WO was saved verbatim as `Claude outputs/WO-006.md` first. Git identity: **Wissam Mouhaidli <wmhaidly@gmail.com>** (latest VP commit `b37e722`).
+Branch: `claude/great-albattani-oqw1u0`. The WO was saved verbatim as `Claude outputs/WO-007.md` first (`3abf87d`).
 
-| Stage | Commit | Gates at the boundary |
+| Stage | Gates at the boundary |
+|---|---|
+| A — test baseline (no game change) | 10 glyph-only goldens re-blessed; fresh regeneration: **shot:check 60/60 at 0 px** (`--threshold=0`) |
+| B — the crown rotor | typecheck · **224 tests** · lint · build · **shot:check 60/60 at 0 px** (`--threshold=0`, from a fresh regeneration) · preview:smoke passed (on the uncommitted tree) |
+
+Evidence frames are in **`Claude outputs/WO-007-evidence/`**.
+
+## The CEO's 2026-10-21 playtest (Beats 0–4)
+1. Being blown off feels fair: **approved**.
+2. He didn't notice the gust warning haze.
+3. He can't reach the Vent Court ledge, even when trying to glide.
+4. The fast fail is quick: **approved**. `player.respawnDrop` 2.5 is now marked CEO-approved ("yes it's quick"). The bridge's wind force 13.25 stays PROVISIONAL: its strength was not judged directly.
+5. He noticed the Space keycap but not what it does.
+
+## The 2026-10-21 diagnosis of (3), from the sim
+- A correct glide from the column top clears the ledge by 4.2 m.
+- The column doesn't hold him at the top. He bobs between 14 m and about 4.5 m on a 3.6 s cycle, which leaves 0.45 s after the keycap appears to start a glide that still lands.
+- A Jump press while still rising is ignored.
+- W or D alone lands 0.5 m short.
+- Holding a direction while entering the column takes him out of it below 3 m.
+- Before this order, the glide was invisible.
+
+**So the rotor makes the glide visible, but it does not widen the 0.45 s window.** That is what A and B below are about.
+
+## Stage A — test baseline
+- In this environment, 10 goldens differed from the WO-006 ones only inside text glyphs: the HUD's E keycap (7 frames, the same 26 px each), the ␣ keycap (vent_court_207) and the card's time digits and ␣ (crosswind_timed_620 and full_run_1150, at most 0.054 % of a frame). The code was unchanged.
+- I viewed each diff and measured its region. Only those 10 frames were re-blessed. A second, fresh regeneration matched all 60 at 0 px, so the baseline repeats here.
+
+## Stage B — the crown rotor
+**What it looks like:** a pale see-through disc with three dark blades on a short mast on his crown, built from primitives. It reads against the grey court (→ `B-glide-vent-court.png`) and against the sky over the void (→ `B-glide-off-the-bridge.png`). The dark blades carry it against the sky; the pale disc adds area against grey.
+
+**When it shows:**
+- It shows only while he glides.
+- It scales in over 0.15 s when the glide starts, and spins at 18 rad/s (time-based).
+- If he lets go of Jump in mid-air, it scales back out over 0.15 s.
+- On touchdown (a landing or a respawn) it is gone at once. A replay removes it until the next glide.
+
+**Where it lives:** the Wind module plus tuning. It is a Wind attachment on the `crown` socket (`src/elements/wind/CrownRotor.ts`). Player.ts and every public interface are unchanged, and nothing checks an element.
+
+**Values (all PROVISIONAL, in `tuning.wind.rotor`). Menus for the CEO:**
+
+| | Now | Menu |
 |---|---|---|
-| WO saved verbatim | `0f61cdb` | — |
-| A — glide prompt + VP approvals | `4e736de` | typecheck · 199 tests · lint · build · shot:check 46/46 at 0 px · preview:smoke passed |
-| B — Beat 4, the Crosswind Bridge | `f09a710` | typecheck · **211 tests** · lint · build · **shot:check 60/60 at 0 px** (`--threshold=0`) · preview:smoke passed on build `f09a710` |
-| handback (this file, evidence) | see `git log` | docs only |
+| Size (radius) | 0.5 m | 0.4 · 0.5 · 0.6 |
+| Spin | 18 rad/s (≈ 2.9 turns/s) | 12 · 18 · 26 |
+| Deploy / retract | 0.15 s | 0.1 · 0.15 · 0.25 |
+| Colours | blades #2B3640, disc #EEF3F6 at 55 % | Wind's grey-blue family (an element effect) |
 
-Evidence frames and the smoke log are in **`Claude outputs/WO-006-evidence/`**.
+**Tests:** it shows only while gliding (every state checked); it scales in and out; touchdown hides it; the spin and deploy match at 30, 60, 120 and 144 Hz and with ragged steps. In the real level: on every step of vent_court and full_run, it is shown on every glide step and never on the ground. A glide off the bridge that ends in a respawn leaves no rotor at the checkpoint. After a replay there is no rotor until the next glide.
 
-## VP approvals recorded (2026-10-01)
-These are now marked VP-approved in tuning.ts and DECISIONS (no longer PROVISIONAL):
-- Gust cone ±45°;
-- the card's fade 0.5 s, hold 0.6 s, fade to 85 %;
-- the Vent Court visible from spawn;
-- the court's invisible walls.
+**Goldens:** only the two frames that catch him mid-glide changed: vent_court_240 and glide_updraft_280. In each, the only change is the rotor. Both were viewed, then re-blessed.
 
-## Stage A — glide prompt
-- **What it looks like:** the D3 keycap beside the HUD slot, showing the Jump binding from Input.ts (␣ on keyboard, A on a pad, following the last-used device). → `A-glide-prompt.png`
-- **When it shows:**
-  - An updraft reports when it starts lifting (`updraftLift`, a fact about the prop, never about who). That arms the prompt.
-  - It appears on his first falling step after the column has actually lifted him, and goes on the step he first glides.
-  - It shows once per run; a replay resets it.
-- **Why "after it has lifted him":** he usually drops into the column from the plinth, so the lift starts while he's still falling. Without the rise requirement the prompt would flash before the ride.
-- **Tested in the real level:** the exact show and hide steps in `vent_court`; it never shows in the yard; a replay re-arms it.
-- **Look change:** at the D3 size the ␣ was a 6 × 4 px mark on the keycap's bottom edge, so this keycap draws it larger and lifted to mid-key. The E prompt is unchanged.
+## Please read: two things about the rotor
+1. **Touchdown hides it at once; it does not retract on landing.** The order says it retracts when the glide ends, and is never visible after a respawn. From where the rotor sits, a respawn looks exactly like a landing. Telling them apart would mean changing Player.ts. So the retract plays when the glide ends in mid-air, and on touchdown it simply goes. (On the respawn step the screen is fully black, so nothing shows there either.)
+2. **A Gust in mid-glide makes it dip.** During a Gust the game reports "gust", not "glide", for 0.27 s, though the glide carries on. Following the order's rule, the rotor folds away, stays hidden for 0.13 s and comes back. Beat 5's mid-glide Gust will show this. Holding it out through a mid-air Gust is a one-line change. **I have not made it:** it is the VP's and CEO's call.
 
-## Stage B — Beat 4, the Crosswind Bridge
-**Layout:**
-- The ledge continues east through an opening in the court's rail onto a sheltered **bridgehead** with the bridge checkpoint. Rail stubs funnel the way onto the deck.
-- The **deck** is a 1.2 m-wide plank at y 6 over nothing.
-- **Span A** (6 m) is exposed, then a walled **shelter nook**, then **span B** (6 m).
-- The **far platform** has the Goal (Beat 5's start).
-- The wind blows across the deck toward the camera, so being blown off reads as falling out of the screen.
+## Open, not picked
+- **A:** the updraft holds him at its top.
+- **B:** a Space press while still rising counts toward the glide.
+- **D:** the glide prompt shows only while falling, pulsing.
+- **E:** a brighter, blinking gust telegraph.
+- Items 1–7 of the Dev Manager's 2026-10-20 report.
 
-**The numbers you asked for:**
-
-| | |
-|---|---|
-| Zone force and window | **13.25**, the midpoint of the window measured at 60 Hz, **10.58 – 15.92** (PROVISIONAL). Menu: lower third ≈ 11.5 · mid 13.25 · upper third ≈ 15.0 |
-| B8 mass rule (braced fully, terminal) | Wind drifts **+1.82 m/s** with the wind; plain body walks into it at **−1.09 m/s** |
-| Timing margin | each exposed span takes **0.83 s** at Wind walk speed, **35 %** of the 2.4 s calm (1.57 s spare per span) |
-| Leaving the bridge → fade | **0.38 s** blown off · **0.80 s** if he glides all the way down (target ≤ 1.0) |
-| Counter aim | **WITH the wind** (toward the camera, down+left), or no stick while the wind carries him |
-
-| WO constraint | Proof |
-|---|---|
-| 1 B8 mass rule | test with simulated terminal speeds (numbers above) |
-| 2 Generous timing | test: each span ≤ 60 % of the no-force window |
-| 3 Both solutions | `crosswind_timed` (wait out a gust, span A, shelter through the next, span B, Goal) and `crosswind_counter` (one mid-air Gust keeps him on through a full gust; the **same inputs without the Gust are blown off**, tested). → `B-counter-jump.png`, `B-counter-after-the-gust-recoil.png` |
-| 4 The liability | `crosswind_blown`: walk on as a gust starts → blown off → respawn at the checkpoint. → `B-gust-hits-on-the-span.png`, `B-blown-off.png`, `B-respawn-fade.png` |
-| 5 Fast fail | new `player.respawnDrop` 2.5 m below the **active checkpoint** (PROVISIONAL), no new prop; tested blown off and gliding |
-| 6 No sequence break | tests: the zones cover the deck's full width and every reachable height; no other walkable surface; gliding under the bridge is caught within ~3.7 m; the bridgehead funnels onto the deck |
-| 7 Visibility | the raycast test runs `full_run` (now the whole bridge) and the blown-off fall down to the fade |
-| 8 Readability | tests: a telegraph before every gust, the haze in view from where he waits; deck 1.2 m, no rails. → `B-bridge-from-the-checkpoint.png`, `B-telegraph.png`, `B-gust-while-waiting.png`, `B-sheltered-through-a-gust.png` |
-| 9 Goal at the far end | test; `full_run` covers Beats 0–4, card at 0:17.7 → `B-card-after-beats-0-4.png` |
-
-**Found on the way (all fixed and tested):**
-- **Missing funnel.** Walking east on the bridgehead off the deck's line missed the checkpoint and fell off its end, back to the Vent Court checkpoint (Beat 3 again). Rail stubs now funnel everyone onto the deck past the checkpoint.
-- **Test sim.** The level test sim never moved the respawn point on checkpoints, which main.ts does. It now does too.
-- **Respawn fade in harness frames.** It was only drawn in the real-time loop, so harness frames never showed it. It now shows.
-
-## Please read: two findings about Beat 4
-1. **The SPEC's counter is aimed the wrong way.** SPEC Beat 4 says "Gust *against* the wind". The recoil goes opposite the aim, so aiming into the wind throws him off faster. What works is: feather the stick into the wind, jump when about to go over, and Gust **with** the wind in mid-air. I recorded "with the wind" in SPEC's as-built note and left the original line for you and the DM to rule on.
-2. **The mass rule is about terminal speed; a gust is short.**
-   - The wind needs ~0.6 s to out-pull a full brace.
-   - Holding the stick fully into the wind walks him off the deck's upwind edge first.
-   - A near-perfect feather (into the wind only while drifting) lasts ~1.5 s of the 1.6 s gust and is then blown off. In my sweeps, exactly one feather setting rode out a whole gust at 13.25, and none did at 14.1 or above.
-   - So the liability holds in practice. If the bridge feels too forgiving, the upper-third force is the lever.
-
-## Manual test steps for the VP
+## Manual test steps for the CEO
 1. Open the Playtest link → **Level 1, Beats 0–4**. Click the game once. Controls: WASD/arrows, Space jump (press again while falling and hold to glide), E Gust.
-2. **Glide prompt:** in the Vent Court, after the column lifts you, a Space keycap appears beside the slot as you start to fall, and goes when you glide. *Do you notice it?*
-3. **Bridge, cold:** walk from the ledge east onto the bridgehead (the pad is the checkpoint). Watch a few pulses: a faint haze warns, a brighter haze blows.
-4. Walk onto the plank during a gust: you're blown off toward the camera and back at the pad in under a second. Does it read as "I'm too light"?
-5. Cross by timing: go right after a gust ends, pause in the nook behind the wall, then the second span. The Goal is on the far platform.
-6. **Find the second solution yourself before reading the answer in "Please read" above.**
-7. Shortcut: F4, then F5 twice, puts you at the bridge with Wind.
+2. **Vent Court:** Gust the grate, ride the column, then press Space again as you start to fall and hold it. A rotor unfolds on his head and spins. *Does it read as "my body changed"?*
+3. Let go of Space in mid-air: it folds away. Glide all the way down instead: it's gone the moment he lands.
+4. **Crosswind Bridge:** walk onto the plank in a calm, jump off toward the camera, and glide. You see the rotor against the sky. When he drops through the fast-fail line he's back at the pad, with no rotor.
+5. Optional: press E while gliding, and watch the rotor dip (item 2 under "Please read").
+6. Shortcut: F4, then F5, puts you in the Vent Court with Wind. Press F5 again for the bridge.
 
-## What the tests could NOT prove (needs the VP)
-- Whether being blown off reads as **"I'm too light"**, not "the game cheated me".
-- Whether the **counter technique is discoverable** (it means aiming *with* the wind, which runs against the SPEC's wording and maybe against instinct).
-- Whether the **glide prompt is noticed**.
-- How hard the wind should push (the force menu), and whether 0.4–0.8 s back to the pad feels right.
-- Whether the telegraph haze (opacity 0.07, the M4a placeholder) is visible enough; the gust haze reads better.
-- Whether ~75 s is right for Beat 4. The scripted crossing takes ~9 s from the checkpoint.
-- iPhone frame rate, and the phone raw-URL route. Still not checkable from here.
+## What the tests could NOT prove (needs the CEO)
+- Whether the rotor feels like the payoff: "I pressed a button and my body changed shape".
+- Whether showing the glide fixes (3). The diagnosis says the 0.45 s window is the deeper problem.
+- The look: size, spin speed, deploy time, colours, and whether vanishing on touchdown feels better or worse than a retract.
+- How the spin reads in motion. The frames are stills, and strobing on a slow device can't be seen from here.
+- Whether the dip during a mid-glide Gust matters.
+- iPhone frame rate. The rotor adds five small meshes, but this is still not checkable from here.
 
 ## Open flags
-- **Shadows:** the longer level makes the sun's fitted shadow map coarser everywhere. That's why every yard golden shifted by a few hundred shadow-edge pixels. A per-area shadow fit would be an M7 polish item; it's not done here.
-- **The court checkpoint is behind you once on the bridge.** After the bridge checkpoint, dropping back into the court respawns you at the bridgehead.
-- **Out of scope, as ordered:** Beat 5+, M5 VFX (wind streaks, rotor, checkpoint feedback), M6 shell.
-- **Unchanged:** the `@vitest/mocker` moderate advisory; `@dimforge/rapier3d-compat` in node_modules (importing it is a lint error).
+- **Unchanged:** shadows (the rotor casts none), the M4a test-fixture ring, the `@vitest/mocker` moderate advisory, and `@dimforge/rapier3d-compat` in node_modules (importing it is a lint error).
+- **Out of scope, as ordered:** Beat 5+, the rest of M5, the M6 shell.
