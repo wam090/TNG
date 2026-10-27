@@ -1,4 +1,28 @@
-# STATUS — 2026-10-22 · WO-007 handback
+# STATUS — 2026-10-28 · WO-008 + WO-009 handback (charter alignment; no game change)
+
+**WO-008 and WO-009 are complete.** Docs and agent config only. Both orders were saved in `Claude outputs/` before the work.
+- **WO-008:** the CEO's 22 Oct items.
+- **WO-009:** the COO's tripwires directive of 22 Oct, acted on first when the session resumed on 27 Oct.
+
+**What changed**
+- **CLAUDE.md** follows WMD Charter v1 and WO-009: Who's who, Chain of command, the artist, the budget, the Drive routine, and tripwires T1–T6.
+- **New subagent:** `.claude/agents/artist.md`. **reviewer** now also checks assets and blocks one that fails T3.
+- **`ASSETS.md`** is the asset manifest (empty). **`.gitignore`** now ignores key files.
+- **Asset services** (`Claude outputs/WO-008-asset-services.md`): **buy nothing now.** This replaces the 22 Oct log's "buy audio now".
+  - Meshy Pro, $20 a month (75 SAR), only if the CEO's rule-7 ruling allows AI models.
+  - ElevenLabs Starter, $6 a month (22.5 SAR), once he approves the style guide's audio section and a work order adds sound.
+- **Until the CEO rules on hard rule 7:** no 3D generation, no 3D plan, no GLB tooling. Hard rule 7 and SPEC Decision 3 stay in force.
+- **The game is unchanged**, so the Playtest link still carries the WO-007 build: https://claude.ai/artifact/JbzCorzyLesTKQQMbT9zNb
+
+**Waiting on the CEO**
+1. The WO-007 play-test, below.
+2. The rule-7 ruling, on page one of the style guide (artist drafts it next).
+
+**Waiting on the COO:** whether the Claude plan counts against the cap, and the session names (the CEO uses DevMan_v0.x; the directive says TNG_v0.x). No tripwire has fired.
+
+---
+
+## WO-007 handback (2026-10-22) — still waiting for the CEO's play
 
 **WO-007 is complete: Stages A and B. Stopped after Stage B, as ordered.** The glide now shows: while he glides, a rotor unfolds on his crown and spins. This is the CEO's pick C, the M5 rotor pulled forward.
 

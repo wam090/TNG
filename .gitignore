@@ -3,3 +3,6 @@ dist/
 shots/*.png
 shots/diff/
 preview/
+# API keys (WMD Charter §4): never commit them
+.env*
+*.env
